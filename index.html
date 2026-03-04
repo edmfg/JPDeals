@@ -52,6 +52,16 @@ tailwind.config = {
   .tab-btn { padding:8px 16px; font-size:13px; font-weight:600; border-bottom:2px solid transparent; transition:all .15s; cursor:pointer; white-space:nowrap; }
   .tab-btn.active { border-bottom-color:currentColor; }
   .vendor-stripe { border-left:4px solid var(--vc); }
+  #polkaBg { position:fixed; inset:0; z-index:0; pointer-events:none; }
+  .landing-card { position:relative; z-index:1; }
+  @keyframes logoSpin { from { transform:rotate(-12deg) scale(.7); opacity:0; } to { transform:rotate(0) scale(1); opacity:1; } }
+  @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+  .logo-enter { animation: logoSpin .5s cubic-bezier(.34,1.56,.64,1) both; }
+  .slide-1 { animation: slideUp .4s .15s ease both; }
+  .slide-2 { animation: slideUp .4s .25s ease both; }
+  .slide-3 { animation: slideUp .4s .4s ease both; }
+  .slide-4 { animation: slideUp .4s .55s ease both; }
+  .slide-5 { animation: slideUp .4s .7s ease both; }
   @media print {
     .no-print { display:none !important; }
     body { background:#fff !important; color:#000 !important; }
@@ -1885,18 +1895,23 @@ function render() {
   // Landing page
   if (!S.currentPartner && !S.isAuthenticated) {
     document.body.className = 'bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen font-sans';
-    app.innerHTML = '<div class="min-h-screen flex flex-col items-center justify-center p-4">'+
-      '<div class="bg-white/90 backdrop-blur-md p-6 sm:p-10 rounded-2xl shadow-lg text-center max-w-sm w-full fade-in border border-gray-100">'+
-      '<div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-5"><span class="text-white text-xl font-bold">M</span></div>'+
-      '<h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-0.5">MFG Media Deal Hub</h1>'+
-      '<p class="text-xs text-gray-400 mb-8">Media partnership deal management</p>'+
+    app.innerHTML = '<canvas id="polkaBg"></canvas>'+
+      '<div class="min-h-screen flex flex-col items-center justify-center p-4 landing-card">'+
+      '<div class="bg-white/85 backdrop-blur-xl p-6 sm:p-10 rounded-2xl shadow-xl text-center max-w-sm w-full border border-white/60">'+
+      '<div class="w-14 h-14 bg-gradient-to-br from-blue-500 via-emerald-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-5 shadow-lg logo-enter"><span class="text-white text-2xl font-bold">M</span></div>'+
+      '<h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-0.5 slide-1">MFG Media Deal Hub</h1>'+
+      '<p class="text-xs text-gray-400 mb-8 slide-2">Media partnership deal management</p>'+
       '<div class="flex flex-col gap-2.5">'+
-      '<button onclick="showPartnerSelection()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-sm transition-all active:scale-95 text-sm">🤝 Continue as Partner</button>'+
-      '<button onclick="enterJamesMode()" class="bg-gray-800 hover:bg-gray-900 text-white font-semibold py-3 px-6 rounded-lg shadow-sm transition-all active:scale-95 text-sm">🔍 ENTER JAMES MODE</button>'+
+      '<button onclick="showPartnerSelection()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-all active:scale-95 text-sm hover:shadow-lg hover:-translate-y-0.5 slide-3">🤝 Continue as Partner</button>'+
+      '<button onclick="enterJamesMode()" class="bg-gray-800 hover:bg-gray-900 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-all active:scale-95 text-sm hover:shadow-lg hover:-translate-y-0.5 slide-4">🔍 ENTER JAMES MODE</button>'+
       '</div></div>'+
-      '<p class="text-[10px] text-gray-300 mt-6">Media Futures Group</p></div>';
+      '<p class="text-[10px] text-gray-300 mt-6 slide-5">Media Futures Group</p></div>';
+    initPolkaDots();
     return;
   }
+
+  // Stop polka dots when leaving landing page
+  if (_polkaRAF) { cancelAnimationFrame(_polkaRAF); _polkaRAF = null; }
 
   const isJames = S.mode === 'james' && S.isAuthenticated;
   const dark = isJames && S.jamesTheme === 'dark';
@@ -1926,6 +1941,66 @@ function render() {
     const fi = document.getElementById('finderInput');
     if (fi) { fi.focus(); fi.selectionStart = fi.selectionEnd = fi.value.length; }
   }
+}
+
+// ================================================================
+// POLKA DOT ANIMATION
+// ================================================================
+let _polkaRAF = null;
+function initPolkaDots() {
+  if (_polkaRAF) cancelAnimationFrame(_polkaRAF);
+  const canvas = document.getElementById('polkaBg');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let w, h;
+  function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const COLORS = [
+    'rgba(59,130,246,0.18)',  // blue
+    'rgba(16,185,129,0.16)',  // emerald
+    'rgba(139,92,246,0.14)',  // purple
+    'rgba(244,114,182,0.14)', // pink
+    'rgba(251,191,36,0.14)',  // amber
+    'rgba(96,165,250,0.12)',  // light blue
+    'rgba(52,211,153,0.12)',  // light emerald
+  ];
+
+  const dots = [];
+  const COUNT = 40;
+  for (let i = 0; i < COUNT; i++) {
+    dots.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: 6 + Math.random() * 28,
+      dx: (Math.random() - 0.5) * 0.4,
+      dy: -0.15 - Math.random() * 0.35,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      phase: Math.random() * Math.PI * 2,
+      wobble: 0.3 + Math.random() * 0.6,
+    });
+  }
+
+  function draw(t) {
+    ctx.clearRect(0, 0, w, h);
+    dots.forEach(d => {
+      const wobbleX = Math.sin(t * 0.001 + d.phase) * d.wobble;
+      d.x += d.dx + wobbleX * 0.3;
+      d.y += d.dy;
+      // wrap around
+      if (d.y + d.r < 0) { d.y = h + d.r; d.x = Math.random() * w; }
+      if (d.x < -d.r) d.x = w + d.r;
+      if (d.x > w + d.r) d.x = -d.r;
+
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+      ctx.fillStyle = d.color;
+      ctx.fill();
+    });
+    _polkaRAF = requestAnimationFrame(draw);
+  }
+  _polkaRAF = requestAnimationFrame(draw);
 }
 
 // Close finder on outside click
