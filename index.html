@@ -44,6 +44,11 @@ tailwind.config = {
   .finder-dropdown { max-height:260px; overflow-y:auto; }
   .score-ring { width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; border-width:3px; border-style:solid; flex-shrink:0; line-height:1; }
   .bar-fill { height:100%; border-radius:4px; transition:width .5s ease; min-width:2px; }
+  .card-expand { max-height:0; overflow:hidden; transition:max-height .3s ease, opacity .2s ease; opacity:0; }
+  .card-expand.open { max-height:3000px; opacity:1; }
+  .detail-section { border-left:3px solid; padding-left:12px; margin-bottom:10px; }
+  .detail-section h5 { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; }
+  .detail-tag { display:inline-block; font-size:10px; padding:2px 8px; border-radius:9999px; margin:1px 2px; font-weight:500; }
   .tab-btn { padding:8px 16px; font-size:13px; font-weight:600; border-bottom:2px solid transparent; transition:all .15s; cursor:pointer; white-space:nowrap; }
   .tab-btn.active { border-bottom-color:currentColor; }
   .vendor-stripe { border-left:4px solid var(--vc); }
@@ -115,6 +120,48 @@ const VENDOR_TIERS = {
   Google:1,Meta:1,Amazon:1,Apple:1,Microsoft:1,LinkedIn:1,TikTok:1,Netflix:1,'Disney+':1,
   YouTube:2,Spotify:2,Snapchat:2,'The New York Times':2,Pinterest:2,Twitch:2,Hulu:2,Walmart:2,
   Reddit:3,'Twitter/X':3,
+};
+
+// ================================================================
+// DEAL DETAILS — structured media buy info per deal
+// ================================================================
+const DEAL_DETAILS = {
+  1: { deliverables:['Homepage Takeover billboard unit (970x250) desktop + mobile','3 waves Sponsored InMail (50K sends/wave) with dynamic personalization','Campaign Manager dashboard with real-time engagement metrics','Post-campaign Brand Lift Study (aided recall + consideration)'], targeting:'Director-level+ professionals in Technology, SaaS, and Cloud Computing verticals. US and Canada. Company size 500+. Seniority filters: VP, C-Suite, Director.', kpis:{Impressions:'6.2M',Reach:'2.4M',CTR:'0.48%',CPM:'$12.10'}, specs:['Billboard: 970x250px, max 150KB, JPG/PNG/GIF','InMail: 500 char subject, 1000 char body, 300x250 hero','Brand Lift: min 1M impressions to activate'], assets:['High-res logo (SVG preferred)','Campaign landing page URL','Audience suppression list (CSV)','InMail copy + personalization tokens'] },
+  2: { deliverables:['TopView ad (first ad users see on app open) for 3 days','In-Feed Video ads (15s and 60s formats) with Spark Ads boost','Branded Hashtag Challenge with custom sound','Creator marketplace access — 8 mid-tier creators (100K-500K followers)'], targeting:'Gen Z and Millennial audiences ages 18-34. Interest categories: Fashion, Beauty, Tech, Entertainment. Geo: US, UK, CA. Dayparting: peak hours 6-10 PM.', kpis:{Views:'18M','Engagement Rate':'5.2%',CPM:'$8.50',Hashtag:'2M+ UGC views'}, specs:['TopView: 9:16, 1080x1920, 5-60s, max 500MB, H.264','In-Feed: 9:16 or 1:1, 5-60s, min 720p','Sound: original audio required for Hashtag Challenge'], assets:['Brand video assets in 9:16 vertical format','Hashtag concept and challenge brief','Creator brief and brand guidelines','Tracking pixels for attribution'] },
+  3: { deliverables:['Feed + Stories carousel ads (up to 10 cards per unit)','Reels Video ads (15s format) across FB + IG','Advantage+ Shopping campaigns with product catalog','Conversions API integration for server-side tracking','Monthly optimization calls with Meta account team'], targeting:'Lookalike audiences (1-3%) based on top 10% LTV customers. Custom audiences from CRM + pixel data. Ages 25-54, US + EMEA. Interest expansion enabled.', kpis:{Reach:'15M','Link Clicks':'120K',ROAS:'4.2x',CPA:'$28'}, specs:['Feed: 1:1 (1080x1080) or 4:5 (1080x1350), max 30MB','Stories/Reels: 9:16 (1080x1920), 15s video, H.265/H.264','Carousel: 2-10 cards, same aspect ratio per set','Product catalog: CSV/XML feed, updated daily'], assets:['Product catalog feed (min 50 SKUs)','Conversions API server access / developer resources','Creative assets in 1:1, 4:5, and 9:16 formats','Pixel ID and domain verification'] },
+  4: { deliverables:['YouTube TrueView In-Stream ads (skippable after 5s)','YouTube Shorts vertical video ads','Google Display Network responsive display ads (300M+ sites)','Performance Max campaign across all Google surfaces','DV360 programmatic guaranteed deals for premium inventory'], targeting:'In-market audiences for B2B SaaS, cloud services, and enterprise software. Affinity segments: Tech decision-makers. YouTube: content targeting on tech review channels. Geo: Global.', kpis:{Impressions:'25M','Video Views':'4M',CTR:'1.8%',CPM:'$14.50'}, specs:['TrueView: 16:9, min 12s (recommended 30s), max 6 min, H.264','Shorts: 9:16, up to 60s, max 256MB','GDN Responsive: logos (1200x1200, 1200x300), images (1200x628), headlines (30 char), descriptions (90 char)','Bumper: 6s non-skippable, 16:9'], assets:['Video creative in 16:9 and 9:16 formats','Logo in 1200x1200 and 1200x300 sizes','Landing pages with UTM parameters','Google Ads account ID for linking'] },
+  5: { deliverables:['Promoted Posts in targeted subreddits (r/technology, r/gadgets, r/programming, r/startups)','Conversation Ads with upvote-boosted placements','Reddit Takeover (exclusive share-of-voice in target subreddits for 24 hrs)','AMA-style brand engagement thread with community managers'], targeting:'Interest targeting: technology, programming, startups, gaming. Community targeting: subreddits with 500K+ subscribers. Platform: desktop-heavy audience (60/40 desktop/mobile). US + EMEA.', kpis:{Impressions:'8M',Upvotes:'45K+',Comments:'12K+',CPM:'$3.50'}, specs:['Image: 1200x628px, PNG/JPG, max 3MB','Video: 16:9, max 15 min, max 1GB, MP4','Carousel: up to 6 cards, 1:1 or 4:3','Headline: 300 characters max'], assets:['Brand-approved community engagement guidelines','AMA participant and talking points doc','Creative assets with authentic, non-corporate tone','Subreddit-specific copy variations'] },
+  6: { deliverables:['Audio ads (15s and 30s) across Spotify Free tier — music + podcast','Display companion banner during audio ad playback','Sponsored Playlist curation (branded playlist with 50+ tracks)','Podcast sponsorship mid-roll on Spotify-exclusive shows','Spotify Ad Studio self-serve dashboard access'], targeting:'Ages 18-44, mood-based targeting (workout, commute, focus, party). Genre targeting: Pop, Hip-Hop, Electronic, Indie. Podcast categories: Technology, Business, True Crime. Geo: US + UK + DE.', kpis:{Impressions:'12M','Audio Completions':'85%','Reach':'4M unique listeners',CPM:'$18'}, specs:['Audio: 15s or 30s, WAV/MP3, -14 LUFS loudness','Companion display: 640x640px, JPG/PNG, max 200KB','Podcast: host-read scripts, 60s max, approved by host','Video takeover: 16:9, max 30s, 720p+'], assets:['Produced audio spots (15s + 30s versions)','Companion banner creative (640x640)','Brand-safe keyword list for podcast targeting','Landing page or Spotify Canvas content'] },
+  7: { deliverables:['Homepage Flex Frame (full-width) for 7 days','Sponsored Content article (1500-2000 words, written by NYT T Brand Studio)','Newsletter sponsorship in Morning Briefing (5 placements)','Site-wide display ads (300x250, 728x90, 300x600)','Post-campaign NYT Insights report with engagement metrics'], targeting:'NYT subscribers and registered users. High-income ($150K+ HHI), college-educated, 35-65 age range. Interest segments: Business, Technology, World Affairs. Geo: US, UK.', kpis:{Impressions:'10M','Article Reads':'85K','Avg Read Time':'3.2 min',CPM:'$32'}, specs:['Flex Frame: 1280x400px hero + 300x250 companion, HTML5 or static','Display: 300x250, 728x90, 300x600, max 150KB, no auto-play audio','Sponsored content: 1500-2000 words, 3-5 images (min 2000px wide)','Newsletter: 600x200px banner, JPG/PNG'], assets:['Brand messaging brief for T Brand Studio writers','High-resolution lifestyle/product photography','Approved spokesperson quotes or data points','Logo in SVG, white, and dark versions'] },
+  8: { deliverables:['Homepage Carousel ad (rotating banner above the fold)','Mid-roll video ads on top 20 partnered streams','Channel-specific Sponsored Stream events (3 streamers, 4 hr each)','Custom Twitch Extension (interactive overlay during streams)','Branded Emote package (5 custom emotes for partner channels)'], targeting:'Gaming and esports enthusiasts ages 16-34. Game-specific: FPS (Valorant, CS2), MOBA (LoL), Battle Royale (Fortnite, Apex). English-speaking markets: US, CA, UK, AU.', kpis:{Impressions:'6M','Stream Views':'1.2M','Chat Mentions':'50K+',CPM:'$22'}, specs:['Video: 16:9, 30s or 60s, max 1080p, H.264/MP4','Carousel: 960x540px, up to 6 slides, JPG/PNG','Extension: HTML5/JS, Twitch Extension SDK, max 1MB initial load','Emotes: 28x28, 56x56, 112x112px, PNG with transparency'], assets:['Video creative with gaming aesthetic','Twitch Extension developer resources / API key','Streamer collaboration briefs','Branded emote designs in 3 required sizes'] },
+  9: { deliverables:['Standard Pins (promoted) in home feed and search results','Idea Pins (multi-page, video-enabled storytelling format)','Shopping Pins with live product catalog integration','Pinterest Trends Spotlight sponsorship (trending topics takeover)','Pinterest Academy co-branded content module'], targeting:'Women 25-54 (78% of platform). Interest targeting: Home Decor, DIY, Fashion, Food & Drink, Wedding Planning. Keyword targeting on search. US + CA + UK.', kpis:{Impressions:'9M','Pin Saves':'180K',CTR:'1.5%',CPM:'$6.50'}, specs:['Standard: 1000x1500px (2:3), max 20MB, JPG/PNG','Idea Pins: 1080x1920 (9:16), 2-20 pages, video 4-60s per page','Shopping: product feed via Shopify/CSV, 1:1 or 2:3 images','Video: 1:1, 2:3, or 9:16, 4s-15 min, H.264, max 2GB'], assets:['Product catalog feed with pricing and availability','Lifestyle photography in 2:3 vertical format','Idea Pin storyboard (5-10 pages recommended)','Pinterest tag installed on website for conversion tracking'] },
+  10: { deliverables:['Snap Ads (full-screen 3-10s video between Stories)','Collection Ads (shoppable product tiles below video)','AR Lens sponsorship (custom branded Lens, 30-day run)','Story Ads in Discover feed (3-20 snaps per set)','First Commercial (non-skippable 6s placement in Discover shows)'], targeting:'Ages 13-34 (core 18-24 demo). Interest: Fashion, Beauty, Gaming, Music, Food. Geo: US, UK, FR, DE. Device targeting: iOS priority (higher engagement rates).', kpis:{Impressions:'14M','Swipe-Ups':'95K','Lens Plays':'3M',CPM:'$7.00'}, specs:['Snap Ads: 9:16 (1080x1920), 3-10s video, H.264, max 32MB','Collection: hero video + 4 product tiles (160x160px each)','AR Lens: Lens Studio project file, face/world tracking','Story Ads: 9:16, 3-20 snaps, logo tile 993x284px'], assets:['Vertical video (9:16) in multiple lengths (3s, 6s, 10s)','Product catalog with images and deep-link URLs','AR Lens 3D assets / brand guidelines for Lens Studio','Swipe-up destination URL with mobile optimization'] },
+  11: { deliverables:['Amazon DSP programmatic display ads (on/off Amazon)','Sponsored Products (keyword-targeted listings in search results)','Sponsored Brands (banner + 3 product showcase at top of search)','Amazon Live shoppable livestream event (2 hours)','Amazon Attribution reporting for off-Amazon media'], targeting:'In-market shoppers actively browsing relevant categories. Retargeting: viewed-but-not-purchased audiences. Product targeting: competitor ASIN targeting. Prime members prioritized. US.', kpis:{Impressions:'20M',ROAS:'5.8x','Add to Cart':'35K',ACoS:'18%'}, specs:['DSP Display: 300x250, 728x90, 160x600, 970x250, static/HTML5','Sponsored Brands: logo 400x400, custom headline 50 chars','Sponsored Products: uses existing product listing images','Amazon Live: 1080p live stream, 2 hr minimum'], assets:['Amazon Seller/Vendor Central account access','Product ASINs and keyword target list','Brand Store URL (Amazon Storefront)','Amazon Live host/presenter coordination'] },
+  12: { deliverables:['Fire TV inline banner ads (home screen placement)','Fire TV Sponsored Screensaver (full-screen when device idle)','Freevee (formerly IMDb TV) pre-roll/mid-roll video ads','Thursday Night Football sponsorship overlay','Alexa-enabled interactive audio ads (skill-based CTA)'], targeting:'Connected TV households, cord-cutters 25-54. Content alignment: premium streaming, live sports, family entertainment. Geo: US. Frequency cap: 3x per household per week.', kpis:{Impressions:'18M','Video Completions':'92%',Reach:'5M households',CPM:'$28'}, specs:['Fire TV Banner: 1920x1080px, static or video loop, max 5s','Screensaver: 1920x1080px, 15-30s video, H.264','Freevee: 15s or 30s, 16:9, 1080p, H.264/MP4','Audio: 15s or 30s, WAV, -16 LUFS, Alexa Skills Kit integration'], assets:['CTV-quality video creative (1080p minimum)','Fire TV banner assets in exact resolution','Alexa Skill setup for interactive audio','Legal/compliance review for sports sponsorship'] },
+  13: { deliverables:['Google Search Ads (text) — 500 keyword portfolio','Google Shopping campaigns with Merchant Center feed','Gmail Sponsored Promotions (expandable ad in Promotions tab)','Discovery Ads across YouTube Home, Gmail, and Google Discover','Campaign-level conversion tracking with GA4 integration'], targeting:'High-intent search queries related to product categories. In-market + affinity audiences. Customer Match with first-party email lists. Broad match with Smart Bidding. Global.', kpis:{Clicks:'200K',CTR:'4.2%',CPA:'$22','Conv Rate':'6.8%'}, specs:['Search: 3 headlines (30 char each), 2 descriptions (90 char each)','Shopping: product feed XML/CSV, GTIN/MPN required','Gmail: 25 char subject, 90 char body, 580x400 expanded image','Discovery: 1200x628 landscape, 1200x1200 square, 5 headlines'], assets:['Google Merchant Center product feed','Keyword research document and negative keyword list','First-party email list (min 1000 entries) for Customer Match','GA4 property ID and conversion events setup'] },
+  14: { deliverables:['LinkedIn Document Ads (carousel PDF format in feed)','LinkedIn Live Event sponsorship (pre/post-event promotion)','LinkedIn Newsletter sponsorship (dedicated edition)','Thought Leader Ads (boosting executive posts as ads)','Lead Gen Forms with CRM auto-sync (Salesforce/HubSpot)'], targeting:'Job titles: CMO, VP Marketing, Director of Digital, Head of Growth. Industries: SaaS, FinTech, Healthcare IT. Company size: 1000+. Seniority: Senior + C-Suite. EMEA focus.', kpis:{Leads:'2,800',CPL:'$45','Form Fill Rate':'12%',Reach:'1.8M'}, specs:['Document Ads: PDF, 10 pages max, 100MB, 1:1 or portrait','Video: MP4, 3s-30min, 75KB-200MB, 1:1 or 16:9 or 9:16','Single Image: 1200x627px min, 5MB max','Lead Gen Form: up to 12 fields, auto-fill from profile'], assets:['Whitepaper/eBook PDF for Document Ads','Executive headshot and approved post copy for Thought Leader Ads','CRM webhook URL or Salesforce/HubSpot API key','LinkedIn Live event agenda and speaker profiles'] },
+  15: { deliverables:['WhatsApp Business API click-to-message ads (from IG/FB)','Instagram Shopping with in-app checkout enabled','Facebook Marketplace Ads for local inventory','Threads Sponsored Posts (beta early-access placement)','Meta Verified brand badge sponsorship pilot'], targeting:'Mobile-first shoppers ages 18-44. Behavioral: online shoppers with purchase history. WhatsApp: opted-in audiences only. Instagram: creator lookalike audiences. NA + LATAM.', kpis:{Messages:'50K','Checkout Starts':'8K','ROAS':'3.8x',CPM:'$11'}, specs:['IG Shopping: 1:1 product images, min 500x500px','WhatsApp: 1024x1024 header image, 1024 char message body','Marketplace: uses existing product catalog images','Threads: text up to 500 chars + 1 image (same as IG specs)'], assets:['WhatsApp Business API approved account','Product catalog synced to Meta Commerce Manager','In-app checkout enabled (Stripe/PayPal integration)','Customer opt-in list for WhatsApp messaging'] },
+  16: { deliverables:['Pinterest Premiere (exclusive ad placement on Explore page for 24 hrs)','Try On AR Pins (virtual try-on for beauty/fashion products)','Pinterest TV shoppable video episodes (3 episodes, 5 min each)','Quiz Pins (interactive multi-question format)','Pinterest API integration for real-time inventory'], targeting:'Women 25-44 with high purchase intent. Seasonal targeting: Holiday, Back-to-School, Wedding Season. Actalike audiences based on top converters. US + UK + CA.', kpis:{Impressions:'12M','Pin Saves':'220K','Try-On Starts':'150K',CPM:'$8'}, specs:['Premiere: 1000x1500px static or video (2:3), featured placement','Try On: 3D model + product images, Lens-compatible format','Pinterest TV: 16:9, 3-8 min, 1080p, H.264','Quiz: 2-3 questions, 1000x1500px per answer card'], assets:['3D product models for AR Try On (USDZ/GLB format)','Video production for Pinterest TV episodes','Quiz storyboard and answer card designs','API credentials for inventory sync'] },
+  17: { deliverables:['Reddit Free-Form ads (rich media with expandable creative)','Reddit Pixel retargeting campaigns','r/IAmA branded AMA event with exec or founder','Subreddit community awards sponsorship','Reddit Conversation Placement ads (within comment threads)'], targeting:'Interest communities: r/technology (15M+ members), r/science, r/futurology, r/business. Contextual targeting within comment threads. Device: 55% mobile. Geo: US + UK + AU.', kpis:{Impressions:'5M',CTR:'0.8%','Comment Engagement':'8K',CPM:'$4.50'}, specs:['Free-Form: up to 720x900px, max 20MB, video/image/carousel','Standard: 1200x628px, max 3MB, JPG/PNG','Video: 16:9, max 15 min, 1GB, MP4','Carousel: up to 6 cards, 1:1 (1080x1080)'], assets:['Reddit Pixel installed on website','AMA participant (executive or subject expert)','Creative adapted for Reddit audience (authentic tone)','Conversion tracking URLs with UTM parameters'] },
+  18: { deliverables:['Snap AR Shopping Lens (virtual try-on for products)','Snapchat Spotlight ad placements (UGC-style 60s videos)','Dynamic Product Ads with catalog retargeting','Snap Map sponsored location pins (geo-fenced)','Cameo-style branded selfie stickers'], targeting:'Core demo: 18-24 year-olds. AR-engaged users (use Lenses 6+ times/week). Shopping behavior: mobile-first purchasers. Geo: US, UK, FR, Middle East.', kpis:{Impressions:'10M','Lens Shares':'500K','Try-Ons':'200K',CPM:'$6.50'}, specs:['AR Lens: Lens Studio v5+, face/body/world tracking, max 8MB','Spotlight: 9:16, 5-60s, H.264, authentic UGC aesthetic','Dynamic Ads: product feed CSV, 1:1 images min 500px','Snap Map: location pin icon 80x80px, radius 1-50 miles'], assets:['3D product models (FBX/GLTF) for AR Shopping Lens','Product catalog feed with deep-link URLs','UGC-style video creative (avoid over-polished look)','Snap Map geofence coordinates and pin assets'] },
+  19: { deliverables:['Spotify Video Takeover (full-screen between songs on mobile)','Sponsored Session (30 min ad-free music in exchange for video view)','Spotify Podcast Ad Insertion (DAI) across 50+ shows','Custom branded Wrapped-style microsite','Spotify Ad Studio campaign management + optimization'], targeting:'Mood playlists: Workout, Focus, Chill, Road Trip. Genre: Pop, Indie, Electronic. First-party audience segments: Commuters, Parents, Students. Geo: US + CA + UK + DE + AU.', kpis:{Impressions:'8M','Video Completions':'90%','Sessions Unlocked':'180K',CPM:'$22'}, specs:['Video Takeover: 9:16, 15-30s, H.264, max 500MB','Sponsored Session: 16:9, 30s exactly, 1080p','DAI Audio: 15s or 30s, WAV, -14 LUFS, companion 640x640','Microsite: responsive HTML5, hosted on Spotify subdomain'], assets:['Video creative in 9:16 and 16:9 formats','Audio spots in 15s and 30s durations','Microsite design and development assets','Podcast host-read script outlines'] },
+  20: { deliverables:['NYT Audio (podcast) sponsorship — The Daily (10 episodes)','Interactive data visualization article (NYT R&D collaboration)','Print + Digital bundle (full-page Sunday print + digital roadblock)','NYT Games sponsorship (Wordle interstitial, 1 week)','NYT Cooking recipe integration (3 sponsored recipes)'], targeting:'NYT Audio listeners (The Daily: 4M+ daily downloads). Premium readership: $200K+ HHI, decision-makers, college-educated. Cross-platform: print, web, app, podcast. Geo: US.', kpis:{'Podcast Downloads':'40M (10 eps)',Impressions:'8M','Wordle Plays':'3M/week',CPM:'$35'}, specs:['Podcast: host-read, 60-90s, delivered as WAV with show notes','Print: full-page 10.5x12.5in, 300 DPI CMYK, PDF/X-1a','Data viz: D3.js compatible datasets, NYT R&D collaboration','Games: 320x50 banner + interstitial 320x480, HTML5'], assets:['Podcast talking points for host-read ad','Print-ready full-page advertisement (CMYK PDF)','Dataset or API for interactive data visualization','Wordle interstitial creative (HTML5)'] },
+  21: { deliverables:['TikTok Pulse (ads adjacent to top 4% trending content)','TikTok Effect House branded AR effect','TikTok Shop integration with in-app storefront','Creator Marketplace campaign (15 creators: 5 macro + 10 micro)','TikTok Symphony AI-generated ad variations (10 versions)'], targeting:'Ages 18-34, culturally connected audiences. TikTok Pulse: contextual alignment with trending content categories (Beauty, Food, Entertainment). Shopping intent signals. NA + EMEA.', kpis:{Views:'25M','Shop Clicks':'180K','Creator Posts':'45',CPM:'$6.80'}, specs:['Pulse: 9:16, 5-60s, same specs as standard In-Feed','Effect House: AR effect, Lens-style, max 5MB, 30-day live','TikTok Shop: product images 1:1 (800x800+), video demos','Creator content: creator-owned, usage rights for 90 days'], assets:['TikTok Shop seller account setup','Product catalog with pricing and shipping info','AR effect design brief and brand assets','Creator brief with do/dont guidelines and key messages'] },
+  22: { deliverables:['Twitch Premium Video ads (pre/mid-roll on partner channels)','Branded Content Campaign with 5 top-tier streamers (10 hr total)','Twitch Drops integration (in-game rewards for viewing)','Twitch Chat bot sponsorship (branded commands and responses)','Event sponsorship for TwitchCon booth presence'], targeting:'Gaming and esports community ages 16-30. Category targeting: Just Chatting, FPS Games, RPGs, Creative. Language: English, Spanish. Concurrent viewer threshold: 1K+ channels.', kpis:{Impressions:'4M','Stream Hours':'50 hrs','Drops Claims':'25K',CPM:'$20'}, specs:['Video: 16:9, 15s or 30s, 1080p, H.264, non-skippable','Drops: Twitch Drops API integration, game-specific rewards','Chat bot: Twitch IRC/EventSub API, custom commands','Booth: 10x20 ft space, power + internet provided by TwitchCon'], assets:['Pre-roll video creative (15s and 30s cuts)','Twitch Drops API credentials and reward inventory','Chat bot command list and response scripts','TwitchCon booth design and staffing plan'] },
+  23: { deliverables:['YouTube Masthead (24-hour homepage takeover on all devices)','YouTube Shorts ad campaign (vertical video placements)','YouTube BrandConnect creator integration (10 creators)','YouTube Select lineups (premium content channels: Music, Sports, News)','Non-skippable bumper ads (6s) across YouTube + YouTube TV'], targeting:'Broad reach for brand awareness. YouTube Select: top 5% channels by viewership. Creator audiences: tech, lifestyle, gaming verticals. Connected TV + mobile. Global.', kpis:{Impressions:'50M','Video Views':'12M',Reach:'20M unique',CPM:'$18'}, specs:['Masthead: 16:9 video (auto-play, muted), companion 300x250','Shorts: 9:16, up to 60s, same specs as vertical video ads','BrandConnect: creator-produced, brand approval required, 60-90s','Bumper: 16:9, 6s exactly, non-skippable, H.264'], assets:['Masthead video hero (16:9, 30s max auto-play)','Vertical video creative (9:16) for Shorts','Creator brief and brand guidelines document','Bumper ad creative (6s) in final format'] },
+  24: { deliverables:['X Premium Ads (shown only to Premium/verified users)','X Spaces audio sponsorship (live audio events)','Trend Takeover+ (branded trend with video creative for 24 hrs)','Timeline Takeover (first ad in timeline for 24 hrs)','X Analytics dashboard with real-time sentiment tracking'], targeting:'Tech-forward audiences on X. Premium users: higher engagement, verified accounts. Interest: Technology, Finance, News, Crypto. Geo: US + UK. Conversation targeting on trending topics.', kpis:{Impressions:'15M','Trend Takeover Views':'8M','Spaces Listeners':'25K',CPM:'$8.50'}, specs:['Video: 16:9 or 1:1, max 2:20, MP4/MOV, max 512MB','Image: 1200x675px (1.91:1), max 5MB, JPG/PNG/GIF','Trend Takeover: 6s video loop + trend description (70 chars)','Spaces: audio only, host + up to 13 speakers'], assets:['Trend Takeover video (6s loop) and hashtag','X Spaces host and speaker lineup','Creative assets for Timeline Takeover (image + video)','Brand safety keyword exclusion list'] },
+  25: { deliverables:['Netflix Standard Ads plan pre-roll (15s and 30s placements)','Netflix Binge ad (mid-episode break after 3rd consecutive episode)','Content genre alignment (Thriller, Comedy, Drama, Documentary)','Netflix Ads Manager self-serve platform access','QR code overlay ad (interactive CTA on connected TV)'], targeting:'Premium streaming audience: 25-54, high household income. Genre targeting by content type. Binge viewers (3+ episodes). Non-skippable for full attention. US + UK + DE + AU + JP.', kpis:{Impressions:'12M','Video Completions':'95%',Reach:'4M households',CPM:'$38'}, specs:['Pre-roll: 15s or 30s, 16:9, 1080p or 4K, H.264/H.265','Binge Ad: 15s, full-screen, non-skippable, HDR optional','QR overlay: 200x200px QR code + 300x100 CTA banner','All: certified by Netflix Ad Tech specs, max 150MB'], assets:['TV-grade video creative (1080p minimum, 4K preferred)','QR code destination URL (mobile-optimized landing)','Genre preference ranking for content alignment','Netflix Ad Manager account setup'] },
+  26: { deliverables:['Hulu Ad Selector (viewer chooses from 3 ad options)','Hulu Pause Ads (static overlay when viewer pauses)','Binge Ads (branded "next episode" interstitial)','GatewayGo shoppable ad format with QR + email lead capture','Hulu Interactive Living Room ads (remote-navigable on CTV)'], targeting:'Cord-cutters and cord-nevers ages 18-49. Content alignment: scripted originals, reality TV, next-day broadcast. Hulu + Live TV sports viewers. US only.', kpis:{Impressions:'10M','Ad Selector Engagement':'45%','Pause Ad Recall':'68%',CPM:'$30'}, specs:['Video: 15s or 30s, 16:9, 1080p, H.264, VAST-compliant','Pause Ad: 1920x1080px, static image, transparent PNG overlay','GatewayGo: video + QR 200x200 + email capture form','Interactive: HTML5, remote-navigable, max 10MB package'], assets:['3 versions of video creative for Ad Selector choice','Pause Ad static overlay (1920x1080)','GatewayGo landing page with email capture','Interactive ad HTML5 build (CTV-compatible)'] },
+  27: { deliverables:['Apple News+ exclusive Sponsored Article (native format)','Apple Podcasts sponsorship (Top Charts featured show integration)','App Store Search Ads (keyword-targeted app install campaigns)','Apple Maps sponsored location pins (retail locations)','Today at Apple in-store event co-sponsorship (5 locations)'], targeting:'Apple ecosystem users (iPhone, iPad, Mac). High-income demo ($125K+ HHI). Apple News+ subscribers: news-engaged, premium content consumers. Geo: US + UK + CA + AU.', kpis:{Impressions:'6M','Article Reads':'45K','App Installs':'15K',CPM:'$42'}, specs:['News+ Article: native HTML, up to 2000 words, responsive images','App Store: 50 char headline, 70 char subtitle, screenshots','Maps: location pin icon 44x44pt @2x, info card 640x480','Podcast: host-read 60s, dynamically inserted, WAV'], assets:['Apple News+ formatted article draft','App Store listing assets (screenshots, previews, metadata)','Retail location addresses for Maps pins','Today at Apple event concept and speaker'] },
+  28: { deliverables:['Microsoft Audience Network native ads (MSN, Outlook, Edge)','Bing Search Ads (keyword campaigns, 500 terms)','LinkedIn Audience Network extension (via Microsoft integration)','Microsoft Start (news feed) Sponsored Content','Xbox advertising pilot (in-game banner and dashboard ads)'], targeting:'Professional audience via Microsoft surfaces. Bing searchers: 36% exclusive reach (not on Google). Outlook: business professionals. Xbox: gaming audience 18-44. Geo: US + UK + EMEA.', kpis:{Impressions:'18M',Clicks:'160K',CTR:'2.1%',CPM:'$10'}, specs:['MSAN Native: 1200x628 image, 130 char description, 70 char title','Bing Search: 3 headlines x 30 char, 2 descriptions x 90 char','Xbox: 728x90 dashboard banner, 300x250 in-game overlay','Microsoft Start: 1200x675 hero image, 90 char headline'], assets:['Keyword portfolio and bid strategy document','Native ad creative sets (image + copy)','Xbox creative assets (gaming-appropriate messaging)','Microsoft Advertising account linking'] },
+  29: { deliverables:['Walmart Connect on-site Sponsored Products (search + browse)','Walmart DSP off-site programmatic (display + video)','Walmart In-Store digital screens (checkout + aisle endcaps)','Walmart+ member exclusive offer placement','Walmart Brand Portal analytics + attribution reporting'], targeting:'Walmart shoppers: mass-market, value-oriented. In-store: geo-targeted to 4,700+ US locations. Online: category browsers, cart abandoners. Walmart+ members: higher frequency buyers. US only.', kpis:{Impressions:'25M',ROAS:'6.2x','In-Store Scans':'40K',CPM:'$12'}, specs:['Sponsored Products: uses existing product listing imagery','DSP Display: 300x250, 728x90, 160x600, static or HTML5','In-Store screens: 1920x1080 static, 15s video loop','Walmart+ Offer: product image 500x500, offer copy 100 chars'], assets:['Walmart Marketplace seller account or supplier ID','Product images meeting Walmart content guidelines','In-store screen creative (1920x1080)','Walmart Connect API access for attribution'] },
+  30: { deliverables:['Disney+ Basic (with ads) pre/mid-roll video placements','Hulu/Disney+ bundle cross-platform campaign','ESPN+ live sports sponsorship overlays','Disney Advertising brand safety guarantee (family-friendly only)','Disney CreativeWorks custom branded content (30s spot production)'], targeting:'Family audiences 25-49 (parents with kids 2-14). Disney+ content: Marvel, Star Wars, Pixar, Disney Animation, National Geographic. ESPN+: sports fans 18-54. US + EMEA.', kpis:{Impressions:'15M','Video Completions':'93%',Reach:'6M households',CPM:'$34'}, specs:['Disney+: 15s or 30s, 16:9, 1080p+, H.264, non-skippable','ESPN+: 15s overlay, 300x250 companion, VAST 4.1','Hulu: same specs as standalone Hulu (VAST-compliant)','CreativeWorks: 30s produced spot, 4K delivery, Disney standards'], assets:['TV-quality video creative (Disney ad standards review)','ESPN overlay creative (300x250 companion)','Brand safety questionnaire (Disney requirements)','CreativeWorks brief if custom production desired'] },
+  31: { deliverables:['TikTok Creative Exchange (TTCX) — 20 creator-produced ads','TikTok For Business Attribution Analytics setup','Branded Mission (crowdsource creator content around brand theme)','TikTok Search Ads (keyword-targeted in TikTok search results)','Sound-On video optimization (TikTok audio-first strategy)'], targeting:'Sound-on mobile viewers 18-30. Search intent: users actively searching product categories on TikTok. Branded Mission: organic creator participation. APAC + NA.', kpis:{Impressions:'30M','Creator Submissions':'500+','Search Clicks':'85K',CPM:'$5.50'}, specs:['TTCX: 9:16, 15-60s, creator-produced, brand-approved','Search Ads: text overlay + thumbnail, 50 char headline','Branded Mission: open brief, 9:16, creator-owned content','All TikTok: MP4/MOV, H.264, max 500MB'], assets:['TTCX creative brief and product samples for creators','Search keyword list (50-100 terms)','Branded Mission theme and prize structure','Product landing page or TikTok Shop link'] },
+  32: { deliverables:['Google AI Overview sponsored citations (Search Generative Experience)','Google Demand Gen campaigns (YouTube + Discover + Gmail)','Google Ads Data Hub clean room analytics','Performance Max with AI-generated creative variations','Google Meridian MMM (Marketing Mix Modeling) pilot'], targeting:'AI-assisted audience expansion across Google surfaces. Demand Gen: visual-first audiences on YouTube and Discover. Clean room: privacy-safe first-party data matching. Global.', kpis:{Impressions:'40M',Conversions:'15K','Clean Room Matches':'85%',CPM:'$16'}, specs:['Demand Gen: 1200x628, 1200x1200, 9:16 video, up to 5 headlines','AI Overview: text + URL citation, 150 char description','Performance Max: auto-generated from seed assets','Data Hub: BigQuery compatible, first-party data CSV/JSON'], assets:['Seed creative assets for AI-generated variations','BigQuery access for Ads Data Hub','First-party customer data (hashed emails/phones)','GA4 and Google Ads accounts linked'] },
+  33: { deliverables:['Meta Advantage+ AI-optimized creative suite (50 ad variations)','Instagram Broadcast Channel brand partnership','Facebook Groups community sponsorship (5 groups, 1M+ members each)','Meta Verified business badge and enhanced support','Ray-Ban Meta Smart Glasses AR ad pilot (in-lens overlay)'], targeting:'AI-expanded audiences based on conversion signals. Advantage+: automated audience targeting with broad signals. IG Broadcast: creator follower audiences. FB Groups: community-interest aligned. Global.', kpis:{Impressions:'20M','Advantage+ ROAS':'4.5x','Broadcast Reach':'2M',CPM:'$9.50'}, specs:['Advantage+: seed images/videos, AI generates variations','Broadcast: 1080x1080 or 9:16, text + media, 1 post/day max','Groups: branded post format, 1200x628 image, 250 char','Smart Glasses: AR overlay spec (Meta AR SDK v3+, max 2MB)'], assets:['High-quality product photos and video for AI creative','Instagram creator partnership agreement','Facebook Groups admin partnerships','Meta AR SDK developer access for Smart Glasses pilot'] },
+  34: { deliverables:['LinkedIn Accelerate AI campaign builder (auto-optimized)','LinkedIn CTV ads (streaming video on connected TVs)','LinkedIn Revenue Attribution Report (closed-loop ROI)','LinkedIn Thought Leader Ads at scale (10 executive posts)','LinkedIn Collaborative Articles sponsored placement'], targeting:'B2B decision-makers: C-Suite, VP, Director at companies with 5000+ employees. Industries: Financial Services, Healthcare, Technology. LinkedIn CTV: same audience on streaming devices. EMEA + NA.', kpis:{Leads:'4,500',CPL:'$38','CTV Reach':'1.2M',CPM:'$15'}, specs:['CTV: 16:9, 15s or 30s, 1080p+, H.264, VAST 4.1','Accelerate: auto-generated from seed copy + URL','Thought Leader: executive post text + image/video','Collaborative Articles: inline mention, 100 char sponsored blurb'], assets:['Landing page URL for Accelerate AI optimization','Executive LinkedIn profiles and post approval','CTV video creative (broadcast quality)','CRM pipeline data for Revenue Attribution'] },
+  35: { deliverables:['Spotify Wrapped brand integration (year-end campaign)','Spotify Clips (15s video clips on artist pages)','Spotify Car Thing successor (in-car audio advertising)','Spotify Marquee (full-screen album/playlist recommendation)','Spotify Canvas (8s loop visual on Now Playing screen)'], targeting:'Heavy Spotify users (4+ hrs/day). Music taste clusters: Indie/Alt, Hip-Hop, K-Pop, Classical. Podcast superfans (5+ shows). Cross-device: mobile, desktop, smart speakers, car. APAC + Global.', kpis:{Impressions:'10M','Marquee CTR':'15%','Canvas Saves':'45K',CPM:'$20'}, specs:['Wrapped: custom data visualization, responsive HTML5, mobile-first','Clips: 9:16, 15s exactly, H.264, loops automatically','Marquee: 640x640 hero image + 50 char headline','Canvas: 720x720, 3-8s seamless loop, MP4, max 4MB'], assets:['Wrapped campaign data and creative assets','Canvas video loops (720x720, seamless)','Marquee album/playlist artwork and copy','Clips video content (15s, vertical)'] },
+  36: { deliverables:['Reddit Developer Platform branded bot (automated Q&A)','Reddit Collectible Avatars NFT collaboration','Reddit Premium ad-free sponsorship (branded Premium gift campaigns)','Reddit Talk (audio Spaces) branded hosting','Subreddit takeover (custom banner + sidebar + pinned post)'], targeting:'Tech-savvy early adopters. Crypto/Web3 enthusiasts (r/CryptoCurrency, r/ethereum). Developer communities (r/webdev, r/programming). Premium users: highest engagement tier. Global.', kpis:{Impressions:'4M','Avatar Mints':'10K+','Talk Listeners':'8K',CPM:'$5'}, specs:['Subreddit takeover: banner 1920x384, sidebar 312x600, mobile 640x192','Avatar: SVG/AI source files, Reddit Avatar builder compatible','Reddit Talk: audio only, up to 2 hr, host + 10 speakers','Bot: Reddit API (OAuth2), rate-limited to 60 req/min'], assets:['Avatar artwork (SVG, layered, Reddit Avatar spec)','Subreddit banner and sidebar designs','Reddit Developer Platform API credentials','Reddit Talk host and topic outline'] },
 };
 
 // ================================================================
@@ -217,6 +264,7 @@ let S = {
   jamesTab: 'deals',
 };
 let expandedRows = new Set();
+let expandedCards = new Set();
 
 // ================================================================
 // PERSISTENCE
@@ -229,7 +277,13 @@ function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); 
 
 function loadDeals() {
   const d = load(STORE.deals, initialDeals);
-  return d.map(deal => ({ ...deal, status: deal.status || 'new', notes: deal.notes || [], negotiations: deal.negotiations || [] }));
+  return d.map(deal => ({
+    ...deal,
+    status: deal.status || 'new',
+    notes: deal.notes || [],
+    negotiations: deal.negotiations || [],
+    details: deal.details || DEAL_DETAILS[deal.id] || null,
+  }));
 }
 
 // ================================================================
@@ -1190,7 +1244,8 @@ function renderLeaderboard() {
 function renderPartnerDealCard(deal) {
   const vc = VENDOR_COLORS[deal.vendor] || '#6b7280';
   const score = calcDealScore(deal);
-  const sc = scoreColor(score);
+  const exp = expandedCards.has(deal.id);
+  const hasDetails = !!deal.details;
   return '<div class="bg-white rounded-xl shadow-sm border border-gray-100 card-hover flex flex-col justify-between fade-in vendor-stripe" style="--vc:'+vc+'">'+
     '<div class="p-4 sm:p-5">'+
     '<div class="flex items-center justify-between mb-2">'+
@@ -1198,11 +1253,19 @@ function renderPartnerDealCard(deal) {
     '<h3 class="text-base font-bold text-gray-800">'+esc(deal.vendor)+'</h3></div>'+
     '<div class="flex items-center gap-1.5">'+urgencyBadge(deal.executionWindow,false)+
     '<span class="text-[10px] font-medium text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">'+esc(deal.region)+'</span></div></div>'+
-    '<p class="text-gray-500 text-xs mb-3 line-clamp-3 leading-relaxed">'+esc(deal.description)+'</p>'+
+    '<p class="text-gray-500 text-xs mb-3 '+(exp?'':'line-clamp-3')+' leading-relaxed">'+esc(deal.description)+'</p>'+
     '<div class="flex items-baseline justify-between gap-2 mb-2">'+
     '<span class="text-xl font-bold text-blue-600">'+fmtMoney(deal.cost)+'</span>'+
     '<span class="text-[10px] font-medium text-gray-500 bg-gray-50 px-2 py-0.5 rounded">'+esc(deal.executionWindow)+'</span></div>'+
-    (deal.terms?'<p class="text-[10px] text-gray-400 italic">'+esc(deal.terms)+'</p>':'')+
+    (exp ? '' : (deal.terms?'<p class="text-[10px] text-gray-400 italic line-clamp-1">'+esc(deal.terms)+'</p>':''))+
+    // Expandable detail section
+    '<div class="card-expand '+(exp?'open':'')+'">'+
+    '<div class="mt-3 pt-3 border-t border-gray-100">'+
+    renderDealDetails(deal, false)+
+    '</div></div>'+
+    (hasDetails ? '<button onclick="event.stopPropagation();toggleCardExpand('+deal.id+')" class="flex items-center gap-1 mt-2 text-[10px] font-semibold text-blue-600 hover:text-blue-700 transition-colors">'+
+    '<svg class="w-3.5 h-3.5 transform transition-transform '+(exp?'rotate-180':'')+'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>'+
+    (exp?'Show Less':'View Full Details')+'</button>' : '')+
     '</div>'+
     '<div class="flex flex-wrap justify-end gap-1.5 px-4 sm:px-5 pb-4 sm:pb-5 pt-3 border-t border-gray-50">'+
     '<a href="'+mailtoAlertJames(deal)+'" class="text-[10px] font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 px-2.5 py-1 rounded-md transition-colors">Alert James</a>'+
@@ -1319,6 +1382,9 @@ function renderJamesDealCard(deal) {
   const selBorder = selected ? (dark?'ring-2 ring-emerald-500/50':'ring-2 ring-blue-400/50') : '';
   const vc = VENDOR_COLORS[deal.vendor] || '#6b7280';
   const score = calcDealScore(deal);
+  const exp = expandedCards.has(deal.id);
+  const hasDetails = !!deal.details;
+  const accentColor = dark ? 'text-emerald-400' : 'text-emerald-600';
 
   return '<div class="border rounded-xl '+card+' '+selBorder+' fade-in vendor-stripe" style="--vc:'+vc+'">'+
     '<div class="p-4">'+
@@ -1340,13 +1406,20 @@ function renderJamesDealCard(deal) {
     '<div class="flex items-center justify-end gap-1.5 mt-0.5">'+
     '<span class="text-[10px] font-medium '+textSub+' '+(dark?'bg-gray-700/50':'bg-gray-50')+' px-1.5 py-0.5 rounded">'+esc(deal.region)+'</span>'+
     '<span class="text-[10px] '+textSub+'">'+esc(deal.executionWindow)+'</span></div></div></div></div>'+
-    '<p class="text-xs '+textSub+' my-2 leading-relaxed">'+esc(deal.description)+'</p>'+
-    (deal.terms?'<p class="text-[10px] '+textSub+' italic mb-1">'+esc(deal.terms)+'</p>':'')+
+    '<p class="text-xs '+textSub+' my-2 leading-relaxed '+(exp?'':'line-clamp-2')+'">'+esc(deal.description)+'</p>'+
+    (exp ? '' : (deal.terms?'<p class="text-[10px] '+textSub+' italic mb-1 line-clamp-1">'+esc(deal.terms)+'</p>':''))+
+    // Expandable detail section
+    '<div class="card-expand '+(exp?'open':'')+'">'+
+    '<div class="mt-2 pt-3 border-t '+(dark?'border-gray-700/30':'border-gray-100')+'">'+
+    renderDealDetails(deal, dark)+
+    '</div></div>'+
+    (hasDetails ? '<button onclick="event.stopPropagation();toggleCardExpand('+deal.id+')" class="flex items-center gap-1 mt-1 text-[10px] font-semibold '+accentColor+' hover:opacity-80 transition-opacity">'+
+    '<svg class="w-3.5 h-3.5 transform transition-transform '+(exp?'rotate-180':'')+'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>'+
+    (exp?'Show Less':'View Full Details')+'</button>' : '')+
     statusActions(deal)+
-    negotiationSection(deal)+
-    notesSection(deal)+
-    geminiSection(deal)+
+    (exp ? negotiationSection(deal)+notesSection(deal)+geminiSection(deal) : '')+
     '<div class="flex flex-wrap justify-end gap-1.5 mt-3 pt-3 border-t '+(dark?'border-gray-700/30':'border-gray-50')+'">'+
+    (exp ? '' : '<button onclick="event.stopPropagation();toggleCardExpand('+deal.id+')" class="text-[10px] font-medium '+(dark?'bg-emerald-900/30 text-emerald-300 hover:bg-emerald-800/40':'bg-emerald-50 text-emerald-700 hover:bg-emerald-100')+' px-2.5 py-1 rounded-md transition-colors mr-auto">Expand</button>')+
     '<button onclick="openDealForm('+deal.id+')" class="text-[10px] font-medium '+(dark?'bg-gray-700/50 text-gray-300 hover:bg-gray-600':'bg-gray-50 text-gray-600 hover:bg-gray-100')+' px-2.5 py-1 rounded-md transition-colors">Edit</button>'+
     '<button onclick="removeDeal('+deal.id+')" class="text-[10px] font-medium '+(dark?'bg-red-900/30 text-red-300 hover:bg-red-800/40':'bg-red-50 text-red-600 hover:bg-red-100')+' px-2.5 py-1 rounded-md transition-colors">Remove</button>'+
     '</div></div></div>';
@@ -1379,7 +1452,7 @@ function renderJamesListItem(deal) {
     html += '<div class="px-4 pb-4 '+(dark?'bg-gray-900/30':'bg-gray-50/50')+' fade-in">'+
       '<div class="flex items-center gap-2 mb-2 flex-wrap">'+renderBenchmarkLine(deal, dark)+renderDuplicateWarning(deal, dark)+'</div>'+
       '<p class="text-xs '+textSub+' mb-2 leading-relaxed">'+esc(deal.description)+'</p>'+
-      (deal.terms?'<p class="text-[10px] '+textSub+' italic mb-2">'+esc(deal.terms)+'</p>':'')+
+      renderDealDetails(deal, dark)+
       statusActions(deal)+negotiationSection(deal)+notesSection(deal)+geminiSection(deal)+
       '<div class="flex flex-wrap justify-end gap-1.5 mt-3">'+
       '<button onclick="event.stopPropagation();openDealForm('+deal.id+')" class="text-[10px] font-medium '+(dark?'bg-gray-700/50 text-gray-300 hover:bg-gray-600':'bg-gray-100 text-gray-600 hover:bg-gray-200')+' px-2.5 py-1 rounded-md">Edit</button>'+
@@ -1392,6 +1465,84 @@ function renderJamesListItem(deal) {
 function toggleJamesRow(id) {
   if (expandedRows.has(id)) expandedRows.delete(id); else expandedRows.add(id);
   render();
+}
+
+function toggleCardExpand(id) {
+  if (expandedCards.has(id)) expandedCards.delete(id); else expandedCards.add(id);
+  render();
+}
+
+function renderDealDetails(deal, dark) {
+  const d = deal.details;
+  if (!d) return '';
+  const textMain = dark ? 'text-gray-200' : 'text-gray-700';
+  const textSub = dark ? 'text-gray-400' : 'text-gray-500';
+  const tagBg = dark ? 'bg-gray-700/60 text-gray-300' : 'bg-gray-100 text-gray-600';
+  const secBg = dark ? 'bg-gray-800/30' : 'bg-gray-50/80';
+  let html = '';
+
+  // Deliverables
+  if (d.deliverables && d.deliverables.length) {
+    html += '<div class="detail-section" style="border-color:'+(dark?'#60a5fa':'#3b82f6')+'">'+
+      '<h5 class="'+(dark?'text-blue-400':'text-blue-600')+'">Deliverables</h5>'+
+      '<ul class="space-y-0.5">';
+    d.deliverables.forEach(item => {
+      html += '<li class="text-[11px] '+textMain+' flex items-start gap-1.5"><span class="'+(dark?'text-blue-400':'text-blue-500')+' mt-px flex-shrink-0">▸</span>'+esc(item)+'</li>';
+    });
+    html += '</ul></div>';
+  }
+
+  // Targeting
+  if (d.targeting) {
+    html += '<div class="detail-section" style="border-color:'+(dark?'#a78bfa':'#7c3aed')+'">'+
+      '<h5 class="'+(dark?'text-purple-400':'text-purple-600')+'">Audience & Targeting</h5>'+
+      '<p class="text-[11px] '+textMain+' leading-relaxed">'+esc(d.targeting)+'</p></div>';
+  }
+
+  // KPIs
+  if (d.kpis) {
+    html += '<div class="detail-section" style="border-color:'+(dark?'#34d399':'#10b981')+'">'+
+      '<h5 class="'+(dark?'text-emerald-400':'text-emerald-600')+'">Projected KPIs</h5>'+
+      '<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">';
+    const kpiEntries = Object.entries(d.kpis);
+    kpiEntries.forEach(([k,v]) => {
+      html += '<div class="'+secBg+' rounded-lg p-2 text-center">'+
+        '<div class="text-xs font-bold '+(dark?'text-emerald-400':'text-emerald-600')+'">'+esc(String(v))+'</div>'+
+        '<div class="text-[9px] '+textSub+' uppercase tracking-wider mt-0.5">'+esc(k)+'</div></div>';
+    });
+    html += '</div></div>';
+  }
+
+  // Creative Specs
+  if (d.specs && d.specs.length) {
+    html += '<div class="detail-section" style="border-color:'+(dark?'#fbbf24':'#f59e0b')+'">'+
+      '<h5 class="'+(dark?'text-amber-400':'text-amber-600')+'">Creative Specs</h5>'+
+      '<div class="flex flex-wrap gap-1">';
+    d.specs.forEach(s => {
+      html += '<span class="detail-tag '+tagBg+'">'+esc(s)+'</span>';
+    });
+    html += '</div></div>';
+  }
+
+  // Required Assets
+  if (d.assets && d.assets.length) {
+    html += '<div class="detail-section" style="border-color:'+(dark?'#f87171':'#ef4444')+'">'+
+      '<h5 class="'+(dark?'text-red-400':'text-red-600')+'">Required from Client</h5>'+
+      '<ul class="space-y-0.5">';
+    d.assets.forEach(a => {
+      html += '<li class="text-[11px] '+textMain+' flex items-start gap-1.5"><span class="'+(dark?'text-red-400':'text-red-500')+' mt-px flex-shrink-0">◻</span>'+esc(a)+'</li>';
+    });
+    html += '</ul></div>';
+  }
+
+  // Terms (moved into expandable section)
+  if (deal.terms) {
+    html += '<div class="detail-section" style="border-color:'+(dark?'#9ca3af':'#6b7280')+'">'+
+      '<h5 class="'+(dark?'text-gray-400':'text-gray-500')+'">Terms & Conditions</h5>'+
+      '<p class="text-[11px] '+textMain+' leading-relaxed">'+esc(deal.terms)+'</p></div>';
+  }
+
+  return html;
 }
 
 function renderJamesMode() {
@@ -1698,6 +1849,7 @@ function handleLogout() {
   S.viewMode = 'tiles'; S.selectedDeals.clear(); S.jamesTab = 'deals';
   S.finderQuery = ''; S.finderResults = null; S.finderOpen = false;
   expandedRows.clear();
+  expandedCards.clear();
   render();
 }
 
@@ -1714,7 +1866,7 @@ function switchToPartnerMode() {
   S.mode = null; S.isAuthenticated = false;
   S.searchQuery = ''; S.sortOption = 'createdAt-desc';
   S.finderQuery = ''; S.finderResults = null; S.jamesTab = 'deals';
-  S.selectedDeals.clear(); expandedRows.clear();
+  S.selectedDeals.clear(); expandedRows.clear(); expandedCards.clear();
   showPartnerSelection();
 }
 
