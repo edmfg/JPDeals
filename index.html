@@ -4,22 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>MFG Media Deal Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config = {
   theme: {
     extend: {
+      fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
       colors: {
-        'partner-primary': '#3b82f6',
-        'partner-secondary': '#60a5fa',
-        'partner-bg': '#f1f5f9',
-        'partner-card': '#ffffff',
-        'partner-text': '#1e293b',
-        'james-primary': '#10b981',
-        'james-secondary': '#34d399',
-        'james-bg': '#111827',
-        'james-card': '#1f2937',
-        'james-text': '#f9fafb',
+        'p-primary': '#3b82f6',
+        'p-secondary': '#60a5fa',
+        'p-bg': '#f1f5f9',
+        'j-primary': '#10b981',
+        'j-secondary': '#34d399',
+        'j-bg': '#0f172a',
+        'j-card': '#1e293b',
+        'j-text': '#f1f5f9',
+        'jl-bg': '#f8fafc',
+        'jl-card': '#ffffff',
+        'jl-text': '#1e293b',
       }
     }
   }
@@ -27,298 +31,927 @@ tailwind.config = {
 </script>
 <style>
   * { box-sizing: border-box; }
-  body { font-family: system-ui, -apple-system, sans-serif; margin: 0; }
-  .fade-in { animation: fadeIn 0.3s ease; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-  .card-hover { transition: transform 0.2s, box-shadow 0.2s; }
-  .card-hover:hover { transform: scale(1.02); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-  .desc-clamp { max-height: 96px; overflow-y: auto; }
-  .dark-scroll::-webkit-scrollbar { width: 6px; }
-  .dark-scroll::-webkit-scrollbar-track { background: #1f2937; }
-  .dark-scroll::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+  body { margin: 0; -webkit-text-size-adjust: 100%; }
+  .fade-in { animation: fadeIn .3s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+  .card-hover { transition: transform .2s, box-shadow .2s; }
+  @media(hover:hover){ .card-hover:hover { transform:translateY(-2px); box-shadow:0 12px 28px rgba(0,0,0,.12); } }
+  button,select,input,textarea { font-size:16px; font-family:inherit; }
+  .dark-scroll::-webkit-scrollbar { width:6px; }
+  .dark-scroll::-webkit-scrollbar-track { background:#1e293b; }
+  .dark-scroll::-webkit-scrollbar-thumb { background:#475569; border-radius:3px; }
+  .finder-dropdown { max-height:260px; overflow-y:auto; }
+  @media print {
+    .no-print { display:none !important; }
+    body { background:#fff !important; color:#000 !important; }
+  }
 </style>
 </head>
-<body class="bg-partner-bg min-h-screen">
-
+<body class="bg-p-bg min-h-screen font-sans">
 <div id="app"></div>
 
 <script>
-// ============================================================
-// DATA & STATE
-// ============================================================
-const STORAGE_KEY = 'mediaDeals';
-const GEMINI_KEY_STORAGE = 'geminiApiKey';
+// ================================================================
+// CONFIGURATION
+// ================================================================
+const STORE = { deals:'mfg_deals', emails:'mfg_emails', activity:'mfg_activity', filters:'mfg_filters', theme:'mfg_theme', gemKey:'geminiApiKey' };
 
-const initialDeals = [
-  { id: 1, vendor: 'LinkedIn', description: 'Homepage takeover for 24 hours, targeting tech professionals. Includes 3 sponsored posts.', cost: 75000, terms: 'Valid for Q3 bookings only. 10% discount if booked this week.', executionWindow: 'Q4 2024', createdAt: '2024-05-26T10:00:00Z', region: 'NA' },
-  { id: 2, vendor: 'TikTok', description: 'Brand challenge with 3 top creators in the finance niche. Guaranteed 5M views.', cost: 120000, terms: 'Creator approval required. Payment 50% upfront.', executionWindow: 'November 1-15, 2024', createdAt: '2024-05-28T14:30:00Z', region: 'APAC' },
-  { id: 3, vendor: 'Meta', description: 'Instagram Reels campaign featuring 5 influencers and a custom AR filter. Includes boosted posts targeting 18-34 demographics in North America.', cost: 95000, terms: 'AR filter development time is 2 weeks extra. All content requires brand approval.', executionWindow: 'Q4 2024', createdAt: '2024-05-20T09:00:00Z', region: 'NA' },
-  { id: 4, vendor: 'Google', description: 'YouTube pre-roll & in-stream video ad campaign on channels related to gaming and esports. Guaranteed 1M impressions.', cost: 60000, terms: 'Video creative must be provided in 3 formats (15s, 30s, 60s).', executionWindow: 'October 2024', createdAt: '2024-05-15T11:20:00Z', region: 'Global' },
-  { id: 5, vendor: 'Reddit', description: 'Sponsored "Ask Me Anything" (AMA) on r/technology with the CTO. Includes promoted posts in 5 related subreddits for one week.', cost: 40000, terms: 'AMA topic and guest must be approved by subreddit moderators.', executionWindow: 'September 20-27, 2024', createdAt: '2024-05-29T16:45:00Z', region: 'NA' },
-  { id: 6, vendor: 'Spotify', description: 'Audio ad campaign targeting "Focus" and "Workout" playlists. Includes companion display banner on the Now Playing screen.', cost: 55000, terms: 'Audio spot production not included. 30-second max length.', executionWindow: 'Q4 2024', createdAt: '2024-05-22T13:00:00Z', region: 'EMEA' },
-  { id: 7, vendor: 'The New York Times', description: 'Sponsored Content package: one feature article on TBrand Studio and two newsletter placements in "DealBook".', cost: 150000, terms: 'Editorial team has final say on content. Four-week lead time required.', executionWindow: 'November 2024', createdAt: '2024-04-30T10:15:00Z', region: 'NA' },
-  { id: 8, vendor: 'Twitch', description: 'Homepage "Top Carousel" placement for 3 days and sponsorship of a top 10 streamer for a 4-hour gaming session.', cost: 85000, terms: 'Streamer has to genuinely like the product. No script reading.', executionWindow: 'Holiday Season 2024', createdAt: '2024-05-27T18:00:00Z', region: 'Global' },
-  { id: 9, vendor: 'Pinterest', description: 'Promoted Pins campaign for a new home decor product line. Includes Idea Pins and a dedicated shopping section.', cost: 45000, terms: 'Requires high-quality vertical imagery. Minimum ad spend commitment.', executionWindow: 'September 1-30, 2024', createdAt: '2024-05-18T09:30:00Z', region: 'NA' },
-  { id: 10, vendor: 'Snapchat', description: 'National sponsored lens for Halloween weekend. Includes analytics on shares and views.', cost: 250000, terms: "Creative concept due 6 weeks prior to launch. Subject to Snap's creative approval.", executionWindow: 'October 29-31, 2024', createdAt: '2024-05-25T12:00:00Z', region: 'NA' },
-  { id: 11, vendor: 'Amazon', description: 'Twitch Prime homepage banner for a week during a major gaming event. Targeted at Prime members.', cost: 180000, terms: 'Requires approval from both Amazon Ads and Twitch teams.', executionWindow: 'December 10-17, 2024', createdAt: '2024-06-01T11:00:00Z', region: 'Global' },
-  { id: 12, vendor: 'Amazon', description: "Sponsored product placement in 'Movers & Shakers' section for 48 hours. Category: Electronics.", cost: 65000, terms: 'Product must have at least a 4-star rating.', executionWindow: 'Q4 2024', createdAt: '2024-06-02T15:00:00Z', region: 'NA' },
-  { id: 13, vendor: 'Google', description: "Google Search top-of-page keyword campaign for 'best productivity tools'. Guaranteed 500k impressions.", cost: 80000, terms: 'Ad copy subject to Google Ads policy.', executionWindow: 'October 2024', createdAt: '2024-06-03T09:30:00Z', region: 'EMEA' },
-  { id: 14, vendor: 'LinkedIn', description: 'Sponsored InMail campaign to 50,000 VPs of Marketing in the US and Canada. A/B testing included.', cost: 90000, terms: 'Maximum of 2 follow-up messages allowed per recipient.', executionWindow: 'Q3 2024', createdAt: '2024-06-04T14:00:00Z', region: 'NA' },
-  { id: 15, vendor: 'Meta', description: 'Facebook & Instagram Stories ad campaign optimized for app installs. Target: Gen Z gamers.', cost: 110000, terms: 'Creative must be vertical video format (9:16).', executionWindow: 'September 2024', createdAt: '2024-06-05T10:00:00Z', region: 'Global' },
-  { id: 16, vendor: 'Pinterest', description: "Promoted 'Trend' feature for one week in the 'Fashion' category. Includes dedicated analytics report.", cost: 70000, terms: 'Requires partnership with at least 3 Pinterest creators.', executionWindow: 'August 2024', createdAt: '2024-06-06T12:45:00Z', region: 'NA' },
-  { id: 17, vendor: 'Reddit', description: 'Community Takeover in r/gadgets for 24 hours. Includes sticky post and banner.', cost: 50000, terms: 'Must align with community rules and moderator approval.', executionWindow: 'Q4 2024', createdAt: '2024-06-07T16:20:00Z', region: 'Global' },
-  { id: 18, vendor: 'Snapchat', description: 'AR Filter placement in the main carousel for a new movie release. Targeted to 13-24 age group.', cost: 180000, terms: 'Lens must be interactive and include a call-to-action.', executionWindow: 'November 2024', createdAt: '2024-06-08T11:30:00Z', region: 'APAC' },
-  { id: 19, vendor: 'Spotify', description: "Podcast Sponsorship: 3 mid-roll ad reads on 'The Daily' podcast.", cost: 200000, terms: 'Host-read ad copy, subject to their creative input.', executionWindow: 'December 2024', createdAt: '2024-06-09T09:00:00Z', region: 'NA' },
-  { id: 20, vendor: 'The New York Times', description: "Sponsorship of 'The Morning' newsletter for 5 weekdays.", cost: 175000, terms: 'Creative is a single banner ad, 600x200px.', executionWindow: 'October 7-11, 2024', createdAt: '2024-06-10T13:00:00Z', region: 'Global' },
-  { id: 21, vendor: 'TikTok', description: 'TopView ad placement for 24 hours. 100% share of voice on app open.', cost: 300000, terms: 'Video must be sound-on and full-screen.', executionWindow: 'Holiday Season 2024', createdAt: '2024-06-11T15:00:00Z', region: 'EMEA' },
-  { id: 22, vendor: 'Twitch', description: "Sponsorship of the /twitchgaming channel's weekly recap show for one month.", cost: 95000, terms: 'Includes logo placement and a 30-second video spot per show.', executionWindow: 'September 2024', createdAt: '2024-06-12T18:00:00Z', region: 'Global' },
-];
-
-const majorPartners = ['Amazon', 'Google', 'LinkedIn', 'Meta', 'Pinterest', 'Reddit', 'Snapchat', 'Spotify', 'The New York Times', 'TikTok', 'Twitch'];
-const regions = ['Global', 'NA', 'EMEA', 'APAC'];
-const sortOptions = [
-  { value: 'createdAt-desc', label: 'Newest First' },
-  { value: 'createdAt-asc', label: 'Oldest First' },
-  { value: 'cost-asc', label: 'Cost: Low to High' },
-  { value: 'cost-desc', label: 'Cost: High to Low' },
-  { value: 'vendor-asc', label: 'Vendor: A-Z' },
-  { value: 'vendor-desc', label: 'Vendor: Z-A' },
-  { value: 'executionWindow-asc', label: 'Execution Window: A-Z' },
-  { value: 'executionWindow-desc', label: 'Execution Window: Z-A' },
-  { value: 'region-asc', label: 'Region: A-Z' },
-  { value: 'region-desc', label: 'Region: Z-A' },
-];
-
-let state = {
-  mode: null,
-  currentPartner: null,
-  isAuthenticated: false,
-  deals: [],
-  searchQuery: '',
-  sortOption: 'createdAt-desc',
-  jamesViewMode: 'tiles',
-  jamesVendorFilter: 'all',
-  vendorEmails: ['linkedin-contact@example.com', 'meta-ads@example.com'],
+const VENDOR_COLORS = {
+  LinkedIn:'#0A66C2', TikTok:'#ff0050', Meta:'#0668E1', Google:'#4285F4',
+  Reddit:'#FF4500', Spotify:'#1DB954', 'The New York Times':'#111', Twitch:'#9146FF',
+  Pinterest:'#E60023', Snapchat:'#FFFC00', Amazon:'#FF9900', 'Twitter/X':'#000',
+  Apple:'#555', Microsoft:'#00A4EF', Hulu:'#1CE783', Netflix:'#E50914',
+  'Disney+':'#113CCF', Walmart:'#0071CE', YouTube:'#FF0000',
 };
 
+const STATUS = {
+  new:      { label:'New',       bg:'bg-blue-100 text-blue-800',     dbg:'bg-blue-900/40 text-blue-300',     icon:'●' },
+  reviewing:{ label:'Reviewing', bg:'bg-amber-100 text-amber-800',   dbg:'bg-amber-900/40 text-amber-300',   icon:'◐' },
+  approved: { label:'Approved',  bg:'bg-emerald-100 text-emerald-800',dbg:'bg-emerald-900/40 text-emerald-300',icon:'✓' },
+  passed:   { label:'Passed',    bg:'bg-gray-100 text-gray-600',     dbg:'bg-gray-700 text-gray-400',        icon:'✗' },
+  expired:  { label:'Expired',   bg:'bg-red-100 text-red-700',       dbg:'bg-red-900/40 text-red-300',       icon:'⊘' },
+};
+
+const STATUS_FLOW = {
+  new: ['reviewing','approved','passed'],
+  reviewing: ['approved','passed'],
+  approved: [],
+  passed: ['reviewing'],
+  expired: [],
+};
+
+const TEMPLATES = [
+  { name:'Social Media Campaign', description:'Multi-platform social media campaign with sponsored posts, stories, and creator partnerships targeting key demographics.', cost:75000, executionWindow:'Q3 2026', terms:'Creative approval required. A/B testing included.', region:'NA' },
+  { name:'Search & Display Ads', description:'Search engine marketing with display retargeting. Keyword research, ad copy optimization, and performance reporting included.', cost:60000, executionWindow:'Q3 2026', terms:'Ad creative must comply with platform policies.', region:'Global' },
+  { name:'Sponsored Content', description:'Branded editorial content package with newsletter placements and native advertising across premium publisher network.', cost:150000, executionWindow:'Q4 2026', terms:'Editorial team approval required. 4-week lead time.', region:'NA' },
+  { name:'Video Pre-Roll', description:'Pre-roll and mid-roll video ads across premium streaming and video platforms. Includes audience targeting and frequency capping.', cost:90000, executionWindow:'Q3 2026', terms:'Video creative in 15s, 30s, 60s formats required.', region:'Global' },
+  { name:'Podcast Sponsorship', description:'Host-read sponsorship across top-tier podcasts with mid-roll and pre-roll placements. Includes attribution tracking.', cost:120000, executionWindow:'Q4 2026', terms:'Host has creative input on ad reads.', region:'NA' },
+];
+
+const FINDER_HINTS = [
+  'Show me the best deals right now',
+  'What deals are expiring soon?',
+  'Find deals under $100K',
+  'Show high-value deals over $200K',
+  'Compare social media platform deals',
+  'What new deals need review?',
+  'Show all approved deals',
+  'Find deals in North America',
+  'Show EMEA region opportunities',
+  'APAC market deals',
+  'Global campaign options',
+  'Cheapest deals available',
+  'Show LinkedIn deals',
+  'Show TikTok opportunities',
+  'Show Meta deals',
+  'Show Google deals',
+  'What deals are under review?',
+];
+
+// ================================================================
+// INITIAL DEALS
+// ================================================================
+const initialDeals = [
+  { id:1, vendor:'LinkedIn', description:'Homepage takeover for 24 hours, targeting tech professionals. Includes 3 sponsored InMail blasts and analytics dashboard.', cost:75000, terms:'Valid for Q2 bookings only. 10% discount if booked this week.', executionWindow:'Q2 2026', createdAt:'2026-01-15T10:00:00Z', region:'NA', status:'approved', notes:[{text:'Strong performance history with LinkedIn.',ts:'2026-01-20T09:00:00Z'}] },
+  { id:2, vendor:'TikTok', description:'Brand challenge with 3 top creators in the finance niche. Guaranteed 5M views with engagement tracking.', cost:120000, terms:'Creator approval required. Payment 50% upfront.', executionWindow:'June 2026', createdAt:'2026-01-28T14:30:00Z', region:'APAC', status:'reviewing', notes:[] },
+  { id:3, vendor:'Meta', description:'Instagram Reels campaign featuring 5 influencers and a custom AR filter. Boosted posts targeting 18-34 in North America.', cost:95000, terms:'AR filter dev time is 2 weeks extra. All content requires brand approval.', executionWindow:'Q3 2026', createdAt:'2026-01-20T09:00:00Z', region:'NA', status:'new', notes:[] },
+  { id:4, vendor:'Google', description:'YouTube pre-roll & in-stream video ads on gaming and esports channels. Guaranteed 1M impressions with frequency capping.', cost:60000, terms:'Video creative must be provided in 3 formats (15s, 30s, 60s).', executionWindow:'May 2026', createdAt:'2026-01-10T11:20:00Z', region:'Global', status:'approved', notes:[{text:'Already have creative assets ready.',ts:'2026-01-15T14:00:00Z'}] },
+  { id:5, vendor:'Reddit', description:'Sponsored AMA on r/technology with the CTO. Promoted posts in 5 related subreddits for one week.', cost:40000, terms:'AMA topic and guest must be approved by subreddit moderators.', executionWindow:'April 2026', createdAt:'2026-02-01T16:45:00Z', region:'NA', status:'new', notes:[] },
+  { id:6, vendor:'Spotify', description:'Audio ad campaign targeting Focus and Workout playlists. Companion display banner on Now Playing screen.', cost:55000, terms:'Audio spot production not included. 30-second max.', executionWindow:'Q3 2026', createdAt:'2026-01-22T13:00:00Z', region:'EMEA', status:'new', notes:[] },
+  { id:7, vendor:'The New York Times', description:'Sponsored content: one feature article on T Brand Studio and two newsletter placements in DealBook.', cost:150000, terms:'Editorial team has final say. Four-week lead time required.', executionWindow:'July 2026', createdAt:'2026-01-05T10:15:00Z', region:'NA', status:'reviewing', notes:[{text:'High CPM but excellent brand safety.',ts:'2026-01-10T11:00:00Z'}] },
+  { id:8, vendor:'Twitch', description:'Homepage Top Carousel placement for 3 days plus sponsorship of a top 10 streamer for a 4-hour session.', cost:85000, terms:'Streamer must genuinely like the product. No script reading.', executionWindow:'August 2026', createdAt:'2026-02-05T18:00:00Z', region:'Global', status:'new', notes:[] },
+  { id:9, vendor:'Pinterest', description:'Promoted Pins campaign for home decor product line. Idea Pins and dedicated shopping section included.', cost:45000, terms:'Requires high-quality vertical imagery. Min ad spend commitment.', executionWindow:'May 2026', createdAt:'2026-01-18T09:30:00Z', region:'NA', status:'approved', notes:[] },
+  { id:10, vendor:'Snapchat', description:'National sponsored lens for Summer weekend. Includes analytics on shares, views, and engagement metrics.', cost:250000, terms:'Creative concept due 6 weeks prior. Subject to Snap creative approval.', executionWindow:'June 2026', createdAt:'2026-02-10T12:00:00Z', region:'NA', status:'reviewing', notes:[] },
+  { id:11, vendor:'Amazon', description:'Twitch Prime homepage banner for one week during Prime Day. Targeted at Prime members with retargeting.', cost:180000, terms:'Requires approval from both Amazon Ads and Twitch teams.', executionWindow:'July 2026', createdAt:'2026-02-15T11:00:00Z', region:'Global', status:'new', notes:[] },
+  { id:12, vendor:'Amazon', description:'Sponsored product placement in Movers & Shakers section for 48 hours. Category: Electronics.', cost:65000, terms:'Product must have at least a 4-star rating.', executionWindow:'Q2 2026', createdAt:'2026-02-18T15:00:00Z', region:'NA', status:'new', notes:[] },
+  { id:13, vendor:'Google', description:'Google Search top-of-page keyword campaign for "best productivity tools". Guaranteed 500k impressions.', cost:80000, terms:'Ad copy subject to Google Ads policy review.', executionWindow:'May 2026', createdAt:'2026-02-20T09:30:00Z', region:'EMEA', status:'new', notes:[] },
+  { id:14, vendor:'LinkedIn', description:'Sponsored InMail campaign to 50,000 VPs of Marketing in US and Canada. A/B testing included.', cost:90000, terms:'Max 2 follow-up messages per recipient.', executionWindow:'Q2 2026', createdAt:'2026-02-22T14:00:00Z', region:'NA', status:'approved', notes:[] },
+  { id:15, vendor:'Meta', description:'Facebook & Instagram Stories ads optimized for app installs. Target: Gen Z gamers in 18-24 bracket.', cost:110000, terms:'Creative must be vertical video (9:16).', executionWindow:'June 2026', createdAt:'2026-02-25T10:00:00Z', region:'Global', status:'new', notes:[] },
+  { id:16, vendor:'Pinterest', description:'Promoted Trend feature for one week in Fashion category. Dedicated analytics report included.', cost:70000, terms:'Requires partnership with at least 3 Pinterest creators.', executionWindow:'April 2026', createdAt:'2026-03-01T12:45:00Z', region:'NA', status:'new', notes:[] },
+  { id:17, vendor:'Reddit', description:'Community Takeover in r/gadgets for 24 hours. Sticky post, banner, and sidebar placement.', cost:50000, terms:'Must align with community rules. Moderator approval required.', executionWindow:'Q3 2026', createdAt:'2026-03-02T16:20:00Z', region:'Global', status:'new', notes:[] },
+  { id:18, vendor:'Snapchat', description:'AR Filter placement in main carousel for a new product launch. Targeted to 13-24 age group.', cost:180000, terms:'Lens must be interactive with call-to-action.', executionWindow:'August 2026', createdAt:'2026-03-03T11:30:00Z', region:'APAC', status:'new', notes:[] },
+  { id:19, vendor:'Spotify', description:'Podcast Sponsorship: 3 mid-roll ad reads on The Daily podcast for one month.', cost:200000, terms:'Host-read ad copy, subject to host creative input.', executionWindow:'September 2026', createdAt:'2026-03-01T09:00:00Z', region:'NA', status:'new', notes:[] },
+  { id:20, vendor:'The New York Times', description:'Sponsorship of The Morning newsletter for 5 weekdays. 600x200px banner placement.', cost:175000, terms:'Single banner format only. No video.', executionWindow:'May 2026', createdAt:'2026-02-28T13:00:00Z', region:'Global', status:'reviewing', notes:[] },
+  { id:21, vendor:'TikTok', description:'TopView ad placement for 24 hours. 100% share of voice on app open across all markets.', cost:300000, terms:'Video must be sound-on and full-screen vertical.', executionWindow:'Q4 2026', createdAt:'2026-03-01T15:00:00Z', region:'EMEA', status:'new', notes:[] },
+  { id:22, vendor:'Twitch', description:'Sponsorship of /twitchgaming weekly recap show for one month. Logo placement + 30s video spot per show.', cost:95000, terms:'4 shows included. Additional shows at $20k each.', executionWindow:'June 2026', createdAt:'2026-03-02T18:00:00Z', region:'Global', status:'new', notes:[] },
+  { id:23, vendor:'YouTube', description:'Creator collaboration series: 5 dedicated videos with top tech YouTubers. Full production support.', cost:225000, terms:'Creator selection requires brand approval. 6-week production timeline.', executionWindow:'Q3 2026', createdAt:'2026-03-01T10:00:00Z', region:'NA', status:'new', notes:[] },
+  { id:24, vendor:'Twitter/X', description:'Promoted trending topic for 24 hours during major tech conference. Includes timeline ads.', cost:130000, terms:'Topic must comply with X advertising policies. Real-time monitoring required.', executionWindow:'May 2026', createdAt:'2026-02-20T14:00:00Z', region:'Global', status:'new', notes:[] },
+  { id:25, vendor:'Netflix', description:'Brand integration opportunity in upcoming original series. Product placement in 3 episodes.', cost:350000, terms:'Subject to Netflix creative team approval. 3-month lead time.', executionWindow:'Q4 2026', createdAt:'2026-03-01T16:00:00Z', region:'NA', status:'reviewing', notes:[{text:'Premium opportunity but high cost. Need exec approval.',ts:'2026-03-02T10:00:00Z'}] },
+  { id:26, vendor:'Hulu', description:'Pre-roll ad campaign during premium content. 15-second spots with frequency capping at 3x/user/week.', cost:88000, terms:'Creative must be submitted 2 weeks prior to launch.', executionWindow:'June 2026', createdAt:'2026-02-25T11:00:00Z', region:'NA', status:'new', notes:[] },
+  { id:27, vendor:'Apple', description:'App Store featured placement for one week. Includes Today tab story and editorial spotlight.', cost:200000, terms:'App must meet Apple quality guidelines. No guaranteed download numbers.', executionWindow:'Q3 2026', createdAt:'2026-03-01T08:00:00Z', region:'Global', status:'new', notes:[] },
+  { id:28, vendor:'Microsoft', description:'LinkedIn + Bing Search bundle: InMail campaign paired with search ads for B2B SaaS targeting.', cost:145000, terms:'Combined reporting dashboard. Min 60-day commitment.', executionWindow:'May-June 2026', createdAt:'2026-02-28T10:00:00Z', region:'NA', status:'new', notes:[] },
+  { id:29, vendor:'Walmart', description:'Walmart Connect retail media: sponsored search + in-store digital displays in 500 locations.', cost:160000, terms:'Product must be sold on Walmart.com. 30-day campaign minimum.', executionWindow:'Q2 2026', createdAt:'2026-02-15T09:00:00Z', region:'NA', status:'new', notes:[] },
+  { id:30, vendor:'Disney+', description:'Branded content integration with upcoming Marvel series. Custom short-form content on social channels.', cost:400000, terms:'Subject to Disney brand guidelines. 4-month lead time required.', executionWindow:'Q4 2026', createdAt:'2026-03-03T14:00:00Z', region:'Global', status:'new', notes:[] },
+  { id:31, vendor:'TikTok', description:'TikTok Shop integration: featured product placement with 10 creator reviews and live shopping event.', cost:175000, terms:'Products must pass TikTok Shop quality review. Commission structure applies.', executionWindow:'July 2026', createdAt:'2026-03-02T12:00:00Z', region:'APAC', status:'new', notes:[] },
+  { id:32, vendor:'Google', description:'Google Discovery campaign across Gmail, YouTube, and Discover feed. AI-optimized creative rotation.', cost:70000, terms:'Requires minimum 5 creative assets. 2-week learning period.', executionWindow:'April 2026', createdAt:'2026-02-10T15:00:00Z', region:'EMEA', status:'approved', notes:[{text:'Good value. Discovery performs well for awareness.',ts:'2026-02-15T10:00:00Z'}] },
+  { id:33, vendor:'Meta', description:'WhatsApp Business campaign targeting small business owners in emerging markets. Click-to-chat ads.', cost:55000, terms:'Message templates require pre-approval. Business verification needed.', executionWindow:'May 2026', createdAt:'2026-02-20T08:00:00Z', region:'APAC', status:'new', notes:[] },
+  { id:34, vendor:'LinkedIn', description:'LinkedIn Live event sponsorship: branded virtual summit with 3 industry thought leaders. Full production.', cost:110000, terms:'Speakers require LinkedIn profile with 10K+ followers. 8-week planning period.', executionWindow:'September 2026', createdAt:'2026-03-04T10:00:00Z', region:'NA', status:'new', notes:[] },
+  { id:35, vendor:'Spotify', description:'Spotify Wrapped campaign tie-in: branded year-in-review experience with custom playlist sponsorship.', cost:280000, terms:'Only available Nov-Dec window. Creative concept due by September.', executionWindow:'December 2026', createdAt:'2026-03-04T11:00:00Z', region:'Global', status:'new', notes:[] },
+  { id:36, vendor:'Reddit', description:'Multi-subreddit promoted post campaign across r/investing, r/stocks, and r/personalfinance. 2-week flight.', cost:35000, terms:'Copy must follow each subreddit community guidelines.', executionWindow:'April 2026', createdAt:'2026-03-01T14:00:00Z', region:'NA', status:'passed', notes:[{text:'Too niche for our current goals.',ts:'2026-03-02T09:00:00Z'}] },
+];
+
+const majorPartners = ['Amazon','Apple','Disney+','Google','Hulu','LinkedIn','Meta','Microsoft','Netflix','Pinterest','Reddit','Snapchat','Spotify','The New York Times','TikTok','Twitch','Twitter/X','Walmart','YouTube'];
+const regions = ['Global','NA','EMEA','APAC'];
+const sortOptions = [
+  {v:'createdAt-desc',l:'Newest First'},{v:'createdAt-asc',l:'Oldest First'},
+  {v:'cost-asc',l:'Cost: Low → High'},{v:'cost-desc',l:'Cost: High → Low'},
+  {v:'vendor-asc',l:'Vendor A-Z'},{v:'vendor-desc',l:'Vendor Z-A'},
+  {v:'region-asc',l:'Region A-Z'},{v:'region-desc',l:'Region Z-A'},
+];
+
+// ================================================================
+// STATE
+// ================================================================
+let S = {
+  mode: null, currentPartner: null, isAuthenticated: false,
+  deals: [], searchQuery: '', sortOption: 'createdAt-desc',
+  viewMode: 'tiles', vendorFilter: 'all', statusFilter: 'all', regionFilter: 'all',
+  vendorEmails: [], selectedDeals: new Set(), jamesTheme: 'dark',
+  savedFilters: [], activityLog: [],
+  finderQuery: '', finderResults: null, finderOpen: false,
+};
 let expandedRows = new Set();
 
+// ================================================================
+// PERSISTENCE
+// ================================================================
+function load(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch { return fallback; }
+}
+function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+
 function loadDeals() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : initialDeals;
-  } catch { return initialDeals; }
+  const d = load(STORE.deals, initialDeals);
+  return d.map(deal => ({
+    ...deal,
+    status: deal.status || 'new',
+    notes: deal.notes || [],
+  }));
 }
 
-function saveDeals() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.deals)); } catch {}
-}
-
+// ================================================================
+// UTILITIES
+// ================================================================
 function esc(s) {
   if (s == null) return '';
   const d = document.createElement('div');
   d.textContent = String(s);
   return d.innerHTML;
 }
+function escAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;');
+}
+function fmtDate(d) { return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
+function fmtMoney(n) { return '$'+Number(n).toLocaleString(); }
 
-function fmtDate(d) {
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+function timeAgo(ts) {
+  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff/60)+'m ago';
+  if (diff < 86400) return Math.floor(diff/3600)+'h ago';
+  if (diff < 604800) return Math.floor(diff/86400)+'d ago';
+  return fmtDate(ts);
 }
 
-function fmtMoney(n) { return '$' + Number(n).toLocaleString(); }
+function parseUrgency(w) {
+  if (!w) return 'normal';
+  const now = new Date();
+  let end = null;
+  const qm = w.match(/Q(\d)\s+(\d{4})/i);
+  if (qm) { end = new Date(+qm[2], +qm[1]*3, 0); }
+  if (!end) {
+    const mos = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const wl = w.toLowerCase();
+    for (let i=0;i<12;i++) {
+      if (wl.includes(mos[i])) { const ym = w.match(/(\d{4})/); if(ym) end = new Date(+ym[1],i+1,0); break; }
+    }
+  }
+  if (!end && /holiday|season/i.test(w)) { const ym = w.match(/(\d{4})/); if(ym) end = new Date(+ym[1],11,31); }
+  if (!end) return 'normal';
+  const days = (end - now) / 864e5;
+  if (days < -7) return 'expired';
+  if (days < 14) return 'urgent';
+  if (days < 45) return 'soon';
+  return 'normal';
+}
 
-// ============================================================
+function urgencyBadge(w, dark) {
+  const u = parseUrgency(w);
+  const cfg = {
+    expired: { label:'Expired', cls: dark?'text-gray-400 bg-gray-700':'text-gray-500 bg-gray-100' },
+    urgent:  { label:'Expiring Soon', cls: dark?'text-red-300 bg-red-900/40':'text-red-700 bg-red-50' },
+    soon:    { label:'Coming Up', cls: dark?'text-amber-300 bg-amber-900/40':'text-amber-700 bg-amber-50' },
+    normal:  { label:'', cls:'' },
+  };
+  const c = cfg[u];
+  if (!c.label) return '';
+  return '<span class="text-xs font-semibold px-2 py-0.5 rounded-full '+c.cls+'">'+c.label+'</span>';
+}
+
+function vendorDot(vendor) {
+  const c = VENDOR_COLORS[vendor] || '#6b7280';
+  return '<span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:'+c+'"></span>';
+}
+
+function statusBadge(status, dark) {
+  const s = STATUS[status] || STATUS.new;
+  const cls = dark ? s.dbg : s.bg;
+  return '<span class="text-xs font-semibold px-2 py-0.5 rounded-full '+cls+'">'+s.icon+' '+s.label+'</span>';
+}
+
+function renderMarkdown(text) {
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g,'<em>$1</em>')
+    .replace(/^- (.*)/gm,'<li class="ml-4 list-disc">$1</li>')
+    .replace(/\n/g,'<br>');
+}
+
+// ================================================================
+// ACTIVITY LOG
+// ================================================================
+function logActivity(action, vendor, detail) {
+  S.activityLog.unshift({ action, vendor, detail, ts: new Date().toISOString() });
+  if (S.activityLog.length > 100) S.activityLog.length = 100;
+  save(STORE.activity, S.activityLog);
+}
+
+// ================================================================
 // FILTERING & SORTING
-// ============================================================
+// ================================================================
 function getFilteredDeals() {
-  let deals = [...state.deals];
-  if (state.currentPartner) deals = deals.filter(d => d.vendor === state.currentPartner);
-  if (state.mode === 'james' && state.jamesVendorFilter !== 'all') deals = deals.filter(d => d.vendor === state.jamesVendorFilter);
-  const q = state.searchQuery.toLowerCase();
-  if (q) deals = deals.filter(d => d.vendor.toLowerCase().includes(q) || d.description.toLowerCase().includes(q) || d.terms.toLowerCase().includes(q) || d.region.toLowerCase().includes(q));
-  const [key, dir] = state.sortOption.split('-');
-  deals.sort((a, b) => {
-    let cmp = 0;
-    if (key === 'cost') cmp = a.cost - b.cost;
-    else if (key === 'createdAt') cmp = new Date(a.createdAt) - new Date(b.createdAt);
-    else cmp = String(a[key] || '').localeCompare(String(b[key] || ''));
-    return dir === 'desc' ? -cmp : cmp;
+  let deals = [...S.deals];
+  if (S.currentPartner) deals = deals.filter(d => d.vendor === S.currentPartner);
+  if (S.mode === 'james') {
+    if (S.vendorFilter !== 'all') deals = deals.filter(d => d.vendor === S.vendorFilter);
+    if (S.statusFilter !== 'all') deals = deals.filter(d => d.status === S.statusFilter);
+    if (S.regionFilter !== 'all') deals = deals.filter(d => d.region === S.regionFilter);
+  }
+  const q = S.searchQuery.toLowerCase();
+  if (q) deals = deals.filter(d =>
+    d.vendor.toLowerCase().includes(q) || d.description.toLowerCase().includes(q) ||
+    d.terms.toLowerCase().includes(q) || d.region.toLowerCase().includes(q) ||
+    (d.status||'').includes(q)
+  );
+  const [key, dir] = S.sortOption.split('-');
+  deals.sort((a,b) => {
+    let c = 0;
+    if (key==='cost') c = a.cost - b.cost;
+    else if (key==='createdAt') c = new Date(a.createdAt) - new Date(b.createdAt);
+    else c = String(a[key]||'').localeCompare(String(b[key]||''));
+    return dir==='desc' ? -c : c;
   });
   return deals;
 }
 
 function getUniqueVendors() {
-  const vendors = new Set(state.deals.map(d => d.vendor));
-  return ['all', ...Array.from(vendors).sort()];
+  return ['all', ...Array.from(new Set(S.deals.map(d=>d.vendor))).sort()];
 }
 
-// ============================================================
-// DEAL CRUD
-// ============================================================
+// ================================================================
+// DEAL CRUD + STATUS + NOTES
+// ================================================================
 function addDeal(data) {
-  state.deals.push({ ...data, id: Date.now(), createdAt: new Date().toISOString() });
-  saveDeals();
+  const deal = { ...data, id:Date.now(), createdAt:new Date().toISOString(), status:'new', notes:[] };
+  S.deals.push(deal);
+  save(STORE.deals, S.deals);
+  logActivity('added', deal.vendor, fmtMoney(deal.cost)+' — '+deal.description.substring(0,60));
 }
 
 function updateDeal(id, data) {
-  state.deals = state.deals.map(d => d.id === id ? { ...d, ...data } : d);
-  saveDeals();
+  S.deals = S.deals.map(d => d.id===id ? {...d,...data} : d);
+  save(STORE.deals, S.deals);
+  const deal = S.deals.find(d=>d.id===id);
+  if (deal) logActivity('edited', deal.vendor, 'Deal updated');
 }
 
 function removeDeal(id) {
-  if (!confirm('Are you sure you want to remove this deal?')) return;
-  state.deals = state.deals.filter(d => d.id !== id);
-  saveDeals();
+  if (!confirm('Remove this deal?')) return;
+  const deal = S.deals.find(d=>d.id===id);
+  S.deals = S.deals.filter(d => d.id!==id);
+  S.selectedDeals.delete(id);
+  save(STORE.deals, S.deals);
+  if (deal) logActivity('removed', deal.vendor, fmtMoney(deal.cost)+' deal removed');
   render();
 }
 
-// ============================================================
-// GEMINI API
-// ============================================================
-async function evaluateDealWithGemini(deal, context) {
-  const apiKey = localStorage.getItem(GEMINI_KEY_STORAGE);
-  if (!apiKey) return 'No API key set. Add your Gemini API key in the Vendor Comms panel.';
-  const prompt = 'You are an expert media buying analyst named James. Evaluate the following media deal based on the provided context. Provide a concise analysis covering pros, cons, and a final recommendation. Format your response in markdown.\n\n**Deal Details:**\n- Vendor: ' + deal.vendor + '\n- Description: ' + deal.description + '\n- Cost: $' + deal.cost.toLocaleString() + '\n- Execution Window: ' + deal.executionWindow + '\n- Region: ' + deal.region + '\n- Special Terms: ' + deal.terms + '\n- Submitted On: ' + fmtDate(deal.createdAt) + '\n\n**My Current Priorities (Context):**\n' + context + '\n\n**Your Analysis:**';
-  try {
-    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(apiKey), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
-    const data = await res.json();
-    if (data.candidates && data.candidates[0]) return data.candidates[0].content.parts[0].text;
-    return 'Error: ' + (data.error?.message || 'Unknown error from Gemini API.');
-  } catch (err) {
-    return 'Error communicating with Gemini API: ' + err.message;
+function changeStatus(id, newStatus) {
+  const deal = S.deals.find(d=>d.id===id);
+  if (!deal) return;
+  const old = deal.status;
+  deal.status = newStatus;
+  save(STORE.deals, S.deals);
+  logActivity('status', deal.vendor, STATUS[old].label+' → '+STATUS[newStatus].label);
+  render();
+}
+
+function addNote(id) {
+  const input = document.getElementById('noteInput-'+id);
+  if (!input || !input.value.trim()) return;
+  const deal = S.deals.find(d=>d.id===id);
+  if (!deal) return;
+  deal.notes.push({ text: input.value.trim(), ts: new Date().toISOString() });
+  save(STORE.deals, S.deals);
+  logActivity('note', deal.vendor, 'Note added');
+  render();
+}
+
+// ================================================================
+// BULK ACTIONS
+// ================================================================
+function toggleSelectDeal(id) {
+  if (S.selectedDeals.has(id)) S.selectedDeals.delete(id); else S.selectedDeals.add(id);
+  render();
+}
+
+function selectAllVisible() {
+  const deals = getFilteredDeals();
+  if (S.selectedDeals.size === deals.length) { S.selectedDeals.clear(); }
+  else { deals.forEach(d => S.selectedDeals.add(d.id)); }
+  render();
+}
+
+function clearSelection() { S.selectedDeals.clear(); render(); }
+
+function bulkChangeStatus(newStatus) {
+  let count = 0;
+  S.selectedDeals.forEach(id => {
+    const deal = S.deals.find(d=>d.id===id);
+    if (deal && deal.status !== newStatus) { deal.status = newStatus; count++; }
+  });
+  if (count) {
+    save(STORE.deals, S.deals);
+    logActivity('bulk', count+' deals', 'Bulk status → '+STATUS[newStatus].label);
+  }
+  S.selectedDeals.clear();
+  render();
+}
+
+function bulkRemove() {
+  const count = S.selectedDeals.size;
+  if (!confirm('Remove '+count+' selected deals?')) return;
+  S.deals = S.deals.filter(d => !S.selectedDeals.has(d.id));
+  save(STORE.deals, S.deals);
+  logActivity('bulk', count+' deals', 'Bulk removed');
+  S.selectedDeals.clear();
+  render();
+}
+
+// ================================================================
+// GEMINI (Simulated)
+// ================================================================
+function simulateGeminiEval(dealId) {
+  const deal = S.deals.find(d=>d.id===dealId);
+  if (!deal) return;
+  const btn = document.getElementById('gemBtn-'+dealId);
+  const result = document.getElementById('gemResult-'+dealId);
+  btn.textContent = '✦ Analyzing...'; btn.disabled = true;
+
+  setTimeout(() => {
+    const dark = isDark();
+    const cpm = (deal.cost / 1000).toFixed(0);
+    const isHigh = deal.cost > 150000;
+    const isLow = deal.cost < 60000;
+    const urgency = parseUrgency(deal.executionWindow);
+
+    let analysis = '**Gemini Analysis: '+deal.vendor+' — '+fmtMoney(deal.cost)+'**\n\n';
+    analysis += '**Pros:**\n';
+    analysis += '- '+deal.vendor+' has strong audience reach in '+deal.region+' market\n';
+    if (isLow) analysis += '- Competitive pricing below market average\n';
+    if (deal.description.toLowerCase().includes('creator')) analysis += '- Creator partnerships drive authentic engagement\n';
+    if (deal.description.toLowerCase().includes('guaranteed')) analysis += '- Performance guarantees reduce risk\n';
+    analysis += '- Execution window ('+deal.executionWindow+') aligns with campaign calendar\n';
+    analysis += '\n**Cons:**\n';
+    if (isHigh) analysis += '- Premium pricing — ensure ROI justifies the '+fmtMoney(deal.cost)+' investment\n';
+    if (deal.terms) analysis += '- Terms require attention: '+deal.terms.substring(0,80)+'\n';
+    if (urgency === 'urgent') analysis += '- Tight timeline — act quickly or window closes\n';
+    if (urgency === 'expired') analysis += '- Execution window has passed — renegotiate dates\n';
+    analysis += '\n**Recommendation:** ';
+    if (deal.status === 'approved') analysis += 'Already approved. Good to proceed with execution planning.';
+    else if (isLow) analysis += 'Strong value play. Recommend **approving** for the '+deal.region+' market.';
+    else if (isHigh) analysis += 'High investment. Recommend **further negotiation** on terms before committing.';
+    else analysis += 'Solid opportunity. Recommend moving to **review** with the team.';
+
+    result.innerHTML = '<div class="p-3 '+(dark?'bg-red-950/50 border border-red-900/30':'bg-red-50 border border-red-200')+' rounded-lg mt-2"><div class="'+(dark?'text-gray-300':'text-gray-700')+' text-xs leading-relaxed">'+renderMarkdown(analysis)+'</div></div>';
+    btn.textContent = '✦ Ask Gemini to Evaluate'; btn.disabled = false;
+  }, 1200);
+}
+
+// ================================================================
+// SIMULATED GEMINI FINDER
+// ================================================================
+function getFinderSuggestions(query) {
+  if (!query) return FINDER_HINTS.slice(0,8);
+  const q = query.toLowerCase();
+  const matches = FINDER_HINTS.filter(h => h.toLowerCase().includes(q));
+  // Add dynamic vendor suggestions
+  const vendors = getUniqueVendors().filter(v => v!=='all' && v.toLowerCase().includes(q));
+  vendors.forEach(v => { if (!matches.some(m=>m.toLowerCase().includes(v.toLowerCase()))) matches.push('Show '+v+' deals'); });
+  return matches.slice(0,8);
+}
+
+function runFinder(query) {
+  if (!query.trim()) { S.finderResults = null; render(); return; }
+  const q = query.toLowerCase();
+  let deals = [...S.deals];
+  let description = '';
+
+  // Parse vendor
+  const allVendors = Array.from(new Set(S.deals.map(d=>d.vendor)));
+  const matchedVendor = allVendors.find(v => q.includes(v.toLowerCase()));
+  if (matchedVendor) { deals = deals.filter(d=>d.vendor===matchedVendor); description += matchedVendor+' deals'; }
+
+  // Parse cost
+  const underMatch = q.match(/under\s*\$?([\d,]+)\s*k?/i);
+  if (underMatch) { const max = +underMatch[1].replace(/,/g,'')*(/k/i.test(underMatch[0])?1000:underMatch[1].length<=3?1000:1); deals = deals.filter(d=>d.cost<=max); description += (description?' | ':'')+'under '+fmtMoney(max); }
+  const overMatch = q.match(/over\s*\$?([\d,]+)\s*k?/i);
+  if (overMatch) { const min = +overMatch[1].replace(/,/g,'')*(/k/i.test(overMatch[0])?1000:overMatch[1].length<=3?1000:1); deals = deals.filter(d=>d.cost>=min); description += (description?' | ':'')+'over '+fmtMoney(min); }
+
+  // Parse region
+  if (q.includes('north america') || /\bna\b/.test(q)) { deals = deals.filter(d=>d.region==='NA'); description += (description?' | ':'')+'NA region'; }
+  else if (q.includes('emea') || q.includes('europe')) { deals = deals.filter(d=>d.region==='EMEA'); description += (description?' | ':'')+'EMEA region'; }
+  else if (q.includes('apac') || q.includes('asia')) { deals = deals.filter(d=>d.region==='APAC'); description += (description?' | ':'')+'APAC region'; }
+  else if (q.includes('global')) { deals = deals.filter(d=>d.region==='Global'); description += (description?' | ':'')+'Global'; }
+
+  // Parse status
+  if (q.includes('approved')) { deals = deals.filter(d=>d.status==='approved'); description += (description?' | ':'')+'Approved'; }
+  else if (q.includes('review') || q.includes('new')) { deals = deals.filter(d=>d.status==='new'||d.status==='reviewing'); description += (description?' | ':'')+'Needs review'; }
+
+  // Parse urgency
+  if (q.includes('expir') || q.includes('urgent') || q.includes('soon')) {
+    deals = deals.filter(d => { const u=parseUrgency(d.executionWindow); return u==='urgent'||u==='soon'; });
+    description += (description?' | ':'')+'Expiring soon';
+  }
+
+  // Sort
+  if (q.includes('cheap') || q.includes('low cost') || q.includes('affordable')) deals.sort((a,b)=>a.cost-b.cost);
+  else if (q.includes('best') || q.includes('top') || q.includes('high value') || q.includes('premium')) deals.sort((a,b)=>b.cost-a.cost);
+  else deals.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+
+  const total = deals.reduce((s,d)=>s+d.cost,0);
+  const avg = deals.length ? Math.round(total/deals.length) : 0;
+
+  let analysis;
+  if (deals.length === 0) {
+    analysis = 'No deals match your query. Try broadening your search criteria.';
+  } else {
+    analysis = 'Found **'+deals.length+' deals** matching: '+description+'.\n\n'+
+      '- **Total pipeline value:** '+fmtMoney(total)+'\n'+
+      '- **Average deal size:** '+fmtMoney(avg)+'\n'+
+      '- **Cost range:** '+fmtMoney(Math.min(...deals.map(d=>d.cost)))+' — '+fmtMoney(Math.max(...deals.map(d=>d.cost)))+'\n';
+    if (deals.length <= 5) {
+      analysis += '\n**Top picks:**\n';
+      deals.forEach(d => { analysis += '- **'+d.vendor+'** ('+fmtMoney(d.cost)+') — '+d.description.substring(0,80)+'...\n'; });
+    } else {
+      analysis += '\n**Top 3 by value:**\n';
+      [...deals].sort((a,b)=>b.cost-a.cost).slice(0,3).forEach(d => {
+        analysis += '- **'+d.vendor+'** ('+fmtMoney(d.cost)+') — '+d.description.substring(0,80)+'...\n';
+      });
+    }
+    const approved = deals.filter(d=>d.status==='approved').length;
+    const newDeals = deals.filter(d=>d.status==='new').length;
+    if (approved) analysis += '\n✓ '+approved+' already approved.';
+    if (newDeals) analysis += '\n● '+newDeals+' awaiting review.';
+  }
+
+  S.finderResults = { query, analysis, deals, description };
+  S.finderOpen = false;
+  render();
+}
+
+function selectFinderSuggestion(idx) {
+  const suggestions = getFinderSuggestions(S.finderQuery);
+  if (suggestions[idx]) {
+    S.finderQuery = suggestions[idx];
+    runFinder(S.finderQuery);
   }
 }
 
-function renderMarkdown(text) {
-  return text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/^- (.*)/gm, '<li class="ml-4 list-disc">$1</li>')
-    .replace(/\n/g, '<br>');
+// ================================================================
+// EXPORT
+// ================================================================
+function exportCSV() {
+  const deals = getFilteredDeals();
+  const header = 'Vendor,Description,Cost,Region,Execution Window,Status,Terms,Created';
+  const rows = deals.map(d =>
+    [d.vendor, '"'+d.description.replace(/"/g,'""')+'"', d.cost, d.region, d.executionWindow, d.status, '"'+(d.terms||'').replace(/"/g,'""')+'"', d.createdAt].join(',')
+  );
+  const csv = header+'\n'+rows.join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'mfg-deals-export.csv'; a.click();
+  URL.revokeObjectURL(url);
+  logActivity('export', S.deals.length+' deals', 'CSV export');
 }
 
-async function runGemini(dealId) {
-  const ctx = document.getElementById('gemCtx-' + dealId);
-  const btn = document.getElementById('gemBtn-' + dealId);
-  const result = document.getElementById('gemResult-' + dealId);
-  if (!ctx || !ctx.value.trim()) return;
-  btn.textContent = 'Thinking...';
-  btn.disabled = true;
-  const deal = state.deals.find(d => d.id === dealId);
-  const text = await evaluateDealWithGemini(deal, ctx.value);
-  result.innerHTML = '<div class="p-4 bg-gray-800 rounded-md"><div class="text-gray-300 text-sm leading-relaxed">' + renderMarkdown(text) + '</div></div>';
-  btn.textContent = 'Evaluate with Gemini \u2728';
-  btn.disabled = false;
+// ================================================================
+// SAVED FILTERS
+// ================================================================
+function saveCurrentFilter() {
+  const name = prompt('Name this filter:');
+  if (!name) return;
+  S.savedFilters.push({
+    name, searchQuery:S.searchQuery, sortOption:S.sortOption,
+    vendorFilter:S.vendorFilter, statusFilter:S.statusFilter, regionFilter:S.regionFilter
+  });
+  save(STORE.filters, S.savedFilters);
+  render();
 }
 
-// ============================================================
-// RENDER HELPERS
-// ============================================================
-function renderFilterSort(isJames) {
-  const t = isJames
-    ? { container: 'bg-james-card border border-gray-700', input: 'bg-gray-700 border-gray-600 text-gray-300 focus:ring-james-primary', label: 'text-gray-300' }
-    : { container: 'bg-gray-100', input: 'bg-white border-gray-300 text-gray-700 focus:ring-partner-primary', label: 'text-gray-700' };
-  return '<div class="p-4 rounded-lg mb-8 ' + t.container + '">' +
-    '<div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">' +
-    '<div class="md:col-span-2"><label class="block text-sm font-medium mb-1 ' + t.label + '">\uD83D\uDD0D Search Deals</label>' +
-    '<input type="text" placeholder="Search by vendor, description, region, terms..." value="' + esc(state.searchQuery) + '" oninput="state.searchQuery=this.value;render()" class="w-full p-2 border rounded-md ' + t.input + '"></div>' +
-    '<div><label class="block text-sm font-medium mb-1 ' + t.label + '">Sort By</label>' +
-    '<select onchange="state.sortOption=this.value;render()" class="w-full p-2 border rounded-md ' + t.input + '">' +
-    sortOptions.map(o => '<option value="' + o.value + '"' + (state.sortOption === o.value ? ' selected' : '') + '>' + o.label + '</option>').join('') +
-    '</select></div></div></div>';
+function loadSavedFilter(idx) {
+  const f = S.savedFilters[idx];
+  if (!f) return;
+  S.searchQuery = f.searchQuery; S.sortOption = f.sortOption;
+  S.vendorFilter = f.vendorFilter; S.statusFilter = f.statusFilter; S.regionFilter = f.regionFilter;
+  render();
+}
+
+function deleteSavedFilter(idx) {
+  S.savedFilters.splice(idx, 1);
+  save(STORE.filters, S.savedFilters);
+  render();
+}
+
+// ================================================================
+// COMPARISON
+// ================================================================
+function showCompare() {
+  const deals = S.deals.filter(d => S.selectedDeals.has(d.id));
+  if (deals.length < 2) { alert('Select at least 2 deals to compare.'); return; }
+  const dark = isDark();
+  const bg = dark ? 'bg-j-bg/95' : 'bg-white/95';
+  const card = dark ? 'bg-j-card border-gray-700 text-j-text' : 'bg-white border-gray-200 text-gray-800';
+  const thCls = dark ? 'bg-gray-800 text-gray-300' : 'bg-gray-50 text-gray-600';
+  const tdCls = dark ? 'border-gray-700 text-gray-300' : 'border-gray-200 text-gray-700';
+
+  const rows = [
+    ['Vendor', d => vendorDot(d.vendor)+' '+esc(d.vendor)],
+    ['Cost', d => '<span class="font-bold '+(dark?'text-emerald-400':'text-emerald-600')+'">'+fmtMoney(d.cost)+'</span>'],
+    ['Region', d => esc(d.region)],
+    ['Window', d => esc(d.executionWindow)+' '+urgencyBadge(d.executionWindow, dark)],
+    ['Status', d => statusBadge(d.status, dark)],
+    ['Description', d => '<span class="text-sm">'+esc(d.description.substring(0,120))+'...</span>'],
+    ['Terms', d => '<span class="text-sm italic">'+(d.terms?esc(d.terms.substring(0,100))+'...':'—')+'</span>'],
+    ['Submitted', d => fmtDate(d.createdAt)],
+  ];
+
+  const el = document.createElement('div');
+  el.id = 'compareModal';
+  el.className = 'fixed inset-0 '+bg+' backdrop-blur-sm flex items-start justify-center z-50 p-3 sm:p-6 overflow-y-auto fade-in';
+  el.innerHTML = '<div class="'+card+' rounded-xl border shadow-2xl w-full max-w-5xl my-4 sm:my-8">'+
+    '<div class="flex justify-between items-center p-4 sm:p-6 border-b '+(dark?'border-gray-700':'border-gray-200')+'">'+
+    '<h2 class="text-xl font-bold">Deal Comparison ('+deals.length+')</h2>'+
+    '<button onclick="closeModal(\'compareModal\')" class="text-2xl '+(dark?'text-gray-400 hover:text-white':'text-gray-400 hover:text-gray-700')+'">&times;</button></div>'+
+    '<div class="overflow-x-auto p-4 sm:p-6"><table class="w-full text-sm">'+
+    '<thead><tr><th class="text-left p-2 '+thCls+' rounded-tl-lg">Attribute</th>'+
+    deals.map((d,i) => '<th class="text-left p-2 '+thCls+(i===deals.length-1?' rounded-tr-lg':'')+'">'+esc(d.vendor)+'</th>').join('')+'</tr></thead>'+
+    '<tbody>'+rows.map(([label, fn]) =>
+      '<tr><td class="p-2 font-medium border-t '+tdCls+'">'+label+'</td>'+
+      deals.map(d => '<td class="p-2 border-t '+tdCls+'">'+fn(d)+'</td>').join('')+'</tr>'
+    ).join('')+'</tbody></table></div></div>';
+  document.body.appendChild(el);
+}
+
+// ================================================================
+// RENDER COMPONENTS
+// ================================================================
+function isDark() {
+  return S.mode === 'james' && S.isAuthenticated && S.jamesTheme === 'dark';
+}
+
+function renderStats(deals) {
+  const dark = isDark();
+  const card = dark ? 'bg-j-card border border-gray-700' : 'bg-white border border-gray-200 shadow-sm';
+  const valCls = dark ? 'text-j-text' : 'text-gray-900';
+  const lblCls = dark ? 'text-gray-400' : 'text-gray-500';
+  const total = deals.reduce((s,d)=>s+d.cost,0);
+  const avg = deals.length ? Math.round(total/deals.length) : 0;
+  const newCount = deals.filter(d=>d.status==='new').length;
+  const urgentCount = deals.filter(d=>{const u=parseUrgency(d.executionWindow);return u==='urgent'||u==='soon';}).length;
+
+  const stats = [
+    { v:fmtMoney(total), l:'Pipeline Value', accent: dark?'text-emerald-400':'text-emerald-600' },
+    { v:String(deals.length), l:'Active Deals', accent: dark?'text-blue-400':'text-blue-600' },
+    { v:fmtMoney(avg), l:'Avg Deal Size', accent: dark?'text-purple-400':'text-purple-600' },
+    { v:String(urgentCount), l:'Expiring Soon', accent: urgentCount>0?(dark?'text-red-400':'text-red-600'):(dark?'text-gray-400':'text-gray-500') },
+  ];
+
+  return '<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">'+
+    stats.map(s => '<div class="'+card+' rounded-xl p-3 sm:p-5 fade-in">'+
+      '<div class="'+s.accent+' text-xl sm:text-2xl font-bold truncate">'+s.v+'</div>'+
+      '<div class="'+lblCls+' text-xs sm:text-sm mt-1">'+s.l+'</div></div>'
+    ).join('')+'</div>';
+}
+
+function renderGeminiFinder() {
+  const dark = isDark();
+  const cardBg = dark ? 'bg-red-950 border border-red-900/60' : 'bg-red-50 border border-red-200';
+  const inputCls = dark ? 'bg-red-900/40 border-red-800 text-white placeholder-red-300/60' : 'bg-white border-red-300 text-gray-900 placeholder-red-400';
+  const suggestions = S.finderOpen ? getFinderSuggestions(S.finderQuery) : [];
+
+  let html = '<div class="'+cardBg+' rounded-xl p-4 sm:p-5 mb-6 fade-in">'+
+    '<div class="flex items-center gap-2 mb-3">'+
+    '<span class="text-lg">✦</span>'+
+    '<h3 class="font-semibold '+(dark?'text-red-100':'text-red-800')+'">ASK GEMINI</h3>'+
+    '<span class="text-xs '+(dark?'text-red-300/70 bg-red-900/50':'text-red-600 bg-red-100')+' px-2 py-0.5 rounded-full">AI-Powered Deal Analysis</span></div>'+
+    '<div class="relative">'+
+    '<input type="text" id="finderInput" value="'+escAttr(S.finderQuery)+'" '+
+    'oninput="S.finderQuery=this.value;S.finderOpen=true;render()" '+
+    'onkeydown="if(event.key===\'Enter\'){event.preventDefault();runFinder(this.value)}" '+
+    'onfocus="S.finderOpen=true;render()" '+
+    'placeholder="Ask about deals... e.g., Show me deals under $100K in NA" '+
+    'class="w-full p-3 pr-12 border rounded-xl '+inputCls+' focus:outline-none focus:ring-2 focus:ring-red-500">'+
+    '<button onclick="runFinder(document.getElementById(\'finderInput\').value)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-colors">'+
+    '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></button>';
+
+  if (suggestions.length > 0) {
+    html += '<div class="absolute top-full left-0 right-0 mt-1 '+
+      (dark?'bg-gray-800 border-gray-600':'bg-white border-gray-200')+
+      ' border rounded-xl shadow-xl z-20 finder-dropdown">';
+    suggestions.forEach((s, i) => {
+      html += '<button onclick="selectFinderSuggestion('+i+')" class="w-full text-left px-4 py-2.5 text-sm '+
+        (dark?'text-gray-300 hover:bg-gray-700':'text-gray-700 hover:bg-gray-50')+
+        ' transition-colors'+(i===0?' rounded-t-xl':'')+(i===suggestions.length-1?' rounded-b-xl':'')+
+        '">'+esc(s)+'</button>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // Results
+  if (S.finderResults) {
+    const r = S.finderResults;
+    html += '<div class="mt-4 p-4 '+(dark?'bg-gray-800/50':'bg-gray-50')+' rounded-xl">'+
+      '<div class="flex items-center gap-2 mb-2">'+
+      '<span class="text-sm font-semibold '+(dark?'text-red-400':'text-red-600')+'">✦ Gemini Analysis</span>'+
+      '<span class="text-xs '+(dark?'text-gray-500':'text-gray-400')+'">for "'+esc(r.query)+'"</span></div>'+
+      '<div class="text-sm '+(dark?'text-gray-300':'text-gray-700')+' leading-relaxed">'+renderMarkdown(r.analysis)+'</div>';
+    if (r.deals.length > 0 && r.deals.length <= 10) {
+      html += '<div class="mt-3 space-y-2">';
+      r.deals.forEach(d => {
+        html += '<div class="flex items-center justify-between p-2 '+(dark?'bg-gray-800':'bg-white')+' rounded-lg text-sm">'+
+          '<div class="flex items-center gap-2 min-w-0">'+vendorDot(d.vendor)+
+          '<span class="font-medium '+(dark?'text-j-text':'text-gray-800')+' truncate">'+esc(d.vendor)+'</span>'+
+          statusBadge(d.status,dark)+'</div>'+
+          '<span class="font-bold '+(dark?'text-emerald-400':'text-emerald-600')+' flex-shrink-0 ml-2">'+fmtMoney(d.cost)+'</span></div>';
+      });
+      html += '</div>';
+    }
+    html += '<button onclick="S.finderResults=null;S.finderQuery=\'\';render()" class="mt-3 text-xs '+(dark?'text-gray-400 hover:text-gray-300':'text-gray-500 hover:text-gray-700')+' underline">Clear results</button></div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function renderFilterBar() {
+  const dark = isDark();
+  const isJames = S.mode === 'james';
+  const card = dark ? 'bg-j-card border border-gray-700' : (isJames ? 'bg-white border border-gray-200 shadow-sm' : 'bg-gray-50');
+  const inputCls = dark ? 'bg-gray-700 border-gray-600 text-gray-200 focus:ring-emerald-500' : 'bg-white border-gray-300 text-gray-700 focus:ring-blue-500';
+  const lblCls = dark ? 'text-gray-400' : 'text-gray-600';
+
+  let html = '<div class="'+card+' rounded-xl p-3 sm:p-4 mb-4">'+
+    '<div class="flex flex-wrap gap-3 items-end">';
+
+  // Search
+  html += '<div class="flex-1 min-w-[200px]"><label class="block text-xs font-medium mb-1 '+lblCls+'">Search</label>'+
+    '<input type="text" placeholder="Search deals..." value="'+escAttr(S.searchQuery)+'" oninput="S.searchQuery=this.value;render()" class="w-full p-2 border rounded-lg '+inputCls+'"></div>';
+
+  // Sort
+  html += '<div class="w-40 sm:w-48"><label class="block text-xs font-medium mb-1 '+lblCls+'">Sort</label>'+
+    '<select onchange="S.sortOption=this.value;render()" class="w-full p-2 border rounded-lg '+inputCls+'">'+
+    sortOptions.map(o => '<option value="'+o.v+'"'+(S.sortOption===o.v?' selected':'')+'>'+o.l+'</option>').join('')+'</select></div>';
+
+  if (isJames) {
+    // Vendor filter
+    html += '<div class="w-36"><label class="block text-xs font-medium mb-1 '+lblCls+'">Vendor</label>'+
+      '<select onchange="S.vendorFilter=this.value;render()" class="w-full p-2 border rounded-lg '+inputCls+'">'+
+      getUniqueVendors().map(v => '<option value="'+escAttr(v)+'"'+(S.vendorFilter===v?' selected':'')+'>'+(v==='all'?'All Vendors':esc(v))+'</option>').join('')+'</select></div>';
+
+    // Status filter
+    html += '<div class="w-32"><label class="block text-xs font-medium mb-1 '+lblCls+'">Status</label>'+
+      '<select onchange="S.statusFilter=this.value;render()" class="w-full p-2 border rounded-lg '+inputCls+'">'+
+      '<option value="all"'+(S.statusFilter==='all'?' selected':'')+'>All</option>'+
+      Object.entries(STATUS).map(([k,v]) => '<option value="'+k+'"'+(S.statusFilter===k?' selected':'')+'>'+v.label+'</option>').join('')+'</select></div>';
+
+    // Region filter
+    html += '<div class="w-32"><label class="block text-xs font-medium mb-1 '+lblCls+'">Region</label>'+
+      '<select onchange="S.regionFilter=this.value;render()" class="w-full p-2 border rounded-lg '+inputCls+'">'+
+      '<option value="all"'+(S.regionFilter==='all'?' selected':'')+'>All</option>'+
+      regions.map(r => '<option value="'+r+'"'+(S.regionFilter===r?' selected':'')+'>'+r+'</option>').join('')+'</select></div>';
+  }
+
+  html += '</div>';
+
+  // Saved filters row
+  if (isJames && S.savedFilters.length > 0) {
+    html += '<div class="flex flex-wrap gap-2 mt-3 pt-3 border-t '+(dark?'border-gray-700':'border-gray-200')+'">';
+    html += '<span class="text-xs '+lblCls+' py-1">Saved:</span>';
+    S.savedFilters.forEach((f, i) => {
+      html += '<button onclick="loadSavedFilter('+i+')" class="text-xs px-2.5 py-1 rounded-full '+(dark?'bg-gray-700 text-gray-300 hover:bg-gray-600':'bg-gray-200 text-gray-600 hover:bg-gray-300')+' transition-colors">'+esc(f.name)+
+        '<span onclick="event.stopPropagation();deleteSavedFilter('+i+')" class="ml-1 opacity-60 hover:opacity-100">&times;</span></button>';
+    });
+    html += '</div>';
+  }
+
+  if (isJames) {
+    html += '<div class="flex flex-wrap gap-2 mt-3">'+
+      '<button onclick="saveCurrentFilter()" class="text-xs px-3 py-1.5 rounded-lg '+(dark?'bg-gray-700 text-gray-300 hover:bg-gray-600':'bg-gray-100 text-gray-600 hover:bg-gray-200')+' transition-colors">Save Filter</button>'+
+      '<button onclick="exportCSV()" class="text-xs px-3 py-1.5 rounded-lg '+(dark?'bg-gray-700 text-gray-300 hover:bg-gray-600':'bg-gray-100 text-gray-600 hover:bg-gray-200')+' transition-colors">Export CSV</button>'+
+      '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function renderActivityFeed() {
+  const dark = isDark();
+  const recent = S.activityLog.slice(0, 15);
+  if (recent.length === 0) return '<p class="text-sm '+(dark?'text-gray-500':'text-gray-400')+'">No recent activity.</p>';
+
+  const icons = { added:'◆', edited:'✎', removed:'✗', status:'↻', note:'✐', bulk:'≡', export:'↗' };
+  return '<div class="space-y-2 max-h-64 overflow-y-auto dark-scroll">'+
+    recent.map(a => {
+      const icon = icons[a.action] || '•';
+      return '<div class="flex gap-2 text-xs '+(dark?'text-gray-400':'text-gray-500')+'">'+
+        '<span class="flex-shrink-0 w-4 text-center">'+icon+'</span>'+
+        '<div class="min-w-0"><span class="font-medium '+(dark?'text-gray-300':'text-gray-700')+'">'+esc(a.vendor)+'</span> '+
+        esc(a.detail)+'<div class="text-xs opacity-60 mt-0.5">'+timeAgo(a.ts)+'</div></div></div>';
+    }).join('')+'</div>';
+}
+
+function renderBulkBar() {
+  if (S.selectedDeals.size === 0 || S.mode !== 'james') return '';
+  const dark = isDark();
+  const n = S.selectedDeals.size;
+  return '<div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 '+
+    (dark?'bg-gray-800 border-gray-600':'bg-white border-gray-300')+
+    ' border rounded-2xl shadow-2xl px-4 py-3 flex flex-wrap items-center gap-2 sm:gap-3 fade-in no-print">'+
+    '<span class="text-sm font-medium '+(dark?'text-gray-300':'text-gray-700')+'">'+n+' selected</span>'+
+    '<button onclick="bulkChangeStatus(\'approved\')" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Approve</button>'+
+    '<button onclick="bulkChangeStatus(\'passed\')" class="text-xs px-3 py-1.5 rounded-lg '+(dark?'bg-gray-600 text-gray-200 hover:bg-gray-500':'bg-gray-200 text-gray-700 hover:bg-gray-300')+'">Pass</button>'+
+    '<button onclick="showCompare()" class="text-xs px-3 py-1.5 rounded-lg '+(dark?'bg-blue-600 text-white hover:bg-blue-500':'bg-blue-100 text-blue-700 hover:bg-blue-200')+'">'+(n>=2?'Compare':'Select 2+')+'</button>'+
+    '<button onclick="bulkRemove()" class="text-xs px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600">Remove</button>'+
+    '<button onclick="clearSelection()" class="text-xs px-2 py-1.5 '+(dark?'text-gray-400 hover:text-gray-200':'text-gray-500 hover:text-gray-700')+'">&times;</button>'+
+    '</div>';
+}
+
+// ================================================================
+// PARTNER MODE
+// ================================================================
+function renderPartnerDealCard(deal) {
+  return '<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 card-hover flex flex-col justify-between fade-in">'+
+    '<div>'+
+    '<div class="flex items-center justify-between mb-2">'+
+    '<div class="flex items-center gap-2">'+vendorDot(deal.vendor)+
+    '<h3 class="text-lg font-bold text-gray-800">'+esc(deal.vendor)+'</h3></div>'+
+    '<div class="flex items-center gap-2">'+urgencyBadge(deal.executionWindow,false)+
+    '<span class="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">'+esc(deal.region)+'</span></div></div>'+
+    '<p class="text-gray-600 text-sm mb-3 line-clamp-3">'+esc(deal.description)+'</p>'+
+    '<div class="flex flex-wrap items-baseline justify-between gap-2 mb-3">'+
+    '<span class="text-2xl font-bold text-blue-600">'+fmtMoney(deal.cost)+'</span>'+
+    '<span class="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded-lg">'+esc(deal.executionWindow)+'</span></div>'+
+    (deal.terms?'<p class="text-xs text-gray-500 italic mb-3">'+esc(deal.terms)+'</p>':'')+
+    '</div>'+
+    '<div class="flex flex-wrap justify-end gap-2 mt-3 pt-3 border-t border-gray-100">'+
+    '<a href="'+mailtoAlertJames(deal)+'" class="text-xs font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors">Alert James</a>'+
+    '<button onclick="openDealForm('+deal.id+')" class="text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">Edit</button>'+
+    '<button onclick="removeDeal('+deal.id+')" class="text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors">Remove</button>'+
+    '</div></div>';
 }
 
 function mailtoAlertJames(deal) {
-  return 'mailto:james.palmer@mediafuturesgroup.com?subject=' + encodeURIComponent('URGENT: Deal Update for ' + deal.vendor) + '&body=' + encodeURIComponent('Hi James,\n\nThis is an alert regarding a deal:\n\n- Vendor: ' + deal.vendor + '\n- Description: ' + deal.description.substring(0, 100) + '...\n- Cost: $' + deal.cost.toLocaleString() + '\n\nPlease log in to the MFG Media Deal Hub to review.\n\nThanks!');
-}
-
-// ============================================================
-// PARTNER MODE RENDER
-// ============================================================
-function renderPartnerDealCard(deal) {
-  return '<div class="bg-partner-card rounded-lg shadow-md p-6 border border-gray-200 card-hover flex flex-col justify-between fade-in">' +
-    '<div>' +
-    '<div class="flex justify-between items-start mb-2"><h3 class="text-xl font-bold text-partner-text">' + esc(deal.vendor) + '</h3>' +
-    '<span class="text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded-full">' + esc(deal.region) + '</span></div>' +
-    '<p class="text-gray-600 mb-4 desc-clamp">' + esc(deal.description) + '</p>' +
-    '<div class="flex justify-between items-baseline mb-4"><span class="text-3xl font-bold text-partner-primary">' + fmtMoney(deal.cost) + '</span>' +
-    '<span class="text-sm font-semibold text-gray-700 bg-gray-200 px-2 py-1 rounded">\uD83D\uDCC5 ' + esc(deal.executionWindow) + '</span></div>' +
-    (deal.terms ? '<p class="text-sm text-gray-500 italic mb-4">Terms: ' + esc(deal.terms) + '</p>' : '') +
-    '</div>' +
-    '<div class="flex justify-end items-center space-x-3 mt-4">' +
-    '<a href="' + mailtoAlertJames(deal) + '" class="text-sm font-semibold bg-amber-100 text-amber-800 hover:bg-amber-200 px-4 py-2 rounded-md transition-transform hover:scale-105">\uD83D\uDEA8 Alert James</a>' +
-    '<button onclick="openDealForm(' + deal.id + ')" class="text-sm font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 rounded-md">\u270F\uFE0F Edit</button>' +
-    '<button onclick="removeDeal(' + deal.id + ')" class="text-sm font-semibold bg-red-100 text-red-700 hover:bg-red-200 px-4 py-2 rounded-md">\uD83D\uDDD1\uFE0F Remove</button>' +
-    '</div></div>';
+  return 'mailto:james.palmer@mediafuturesgroup.com?subject='+encodeURIComponent('Deal Update: '+deal.vendor)+'&body='+encodeURIComponent('Hi James,\n\nDeal alert:\n- Vendor: '+deal.vendor+'\n- Cost: $'+deal.cost.toLocaleString()+'\n- Description: '+deal.description.substring(0,100)+'...\n\nPlease review in the MFG Media Deal Hub.\n\nThanks!');
 }
 
 function renderPartnerMode() {
   const deals = getFilteredDeals();
-  return '<div class="p-4 sm:p-8"><div class="max-w-7xl mx-auto">' +
-    '<div class="flex justify-between items-center mb-8"><h1 class="text-4xl font-bold text-partner-text">\uD83D\uDCE2 ' + esc(state.currentPartner) + "&#39;s Dashboard</h1>" +
-    '<button onclick="openDealForm()" class="bg-partner-primary hover:bg-partner-secondary text-white font-bold py-3 px-5 rounded-lg shadow-md transition-transform hover:scale-105">+ Add New Deal</button></div>' +
-    renderFilterSort(false) +
-    (deals.length === 0
-      ? '<div class="text-center py-16 bg-partner-card rounded-lg shadow"><p class="text-2xl text-gray-500">' + (state.searchQuery ? 'No deals match your search.' : 'No deals submitted for ' + esc(state.currentPartner) + ' yet.') + '</p><p class="text-gray-400 mt-2">' + (state.searchQuery ? 'Try a different search term.' : 'Click "Add New Deal" to get started! \uD83D\uDE80') + '</p></div>'
-      : '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">' + deals.map(d => renderPartnerDealCard(d)).join('') + '</div>'
-    ) + '</div></div>';
+  return '<div class="p-3 sm:p-6 lg:p-8"><div class="max-w-7xl mx-auto">'+
+    '<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">'+
+    '<div>'+
+    '<h1 class="text-2xl sm:text-3xl font-bold text-gray-800">'+esc(S.currentPartner)+'</h1>'+
+    '<p class="text-sm text-gray-500 mt-1">Submit and manage your media deal proposals</p></div>'+
+    '<button onclick="openDealForm()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-xl shadow-sm transition-colors active:scale-95 w-full sm:w-auto text-center">+ New Deal</button></div>'+
+    renderFilterBar()+
+    (deals.length===0
+      ? '<div class="text-center py-16 bg-white rounded-xl border border-gray-200"><p class="text-xl text-gray-400">'+(S.searchQuery?'No deals match your search.':'No deals submitted yet.')+'</p><p class="text-gray-400 mt-2 text-sm">'+(S.searchQuery?'Try different search terms.':'Click "New Deal" to get started.')+'</p></div>'
+      : '<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">'+deals.map(d=>renderPartnerDealCard(d)).join('')+'</div>'
+    )+'</div></div>';
 }
 
-// ============================================================
-// JAMES MODE RENDER
-// ============================================================
+// ================================================================
+// JAMES MODE
+// ================================================================
 function geminiSection(deal) {
-  return '<div class="mt-4 pt-4 border-t border-gray-700">' +
-    '<h4 class="font-semibold text-james-text mb-2">\uD83E\uDDE0 Gemini Evaluation</h4>' +
-    '<textarea id="gemCtx-' + deal.id + '" onclick="event.stopPropagation()" placeholder="Enter evaluation context (e.g., campaign goals, budget constraints)..." rows="3" class="w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-james-primary"></textarea>' +
-    '<button onclick="event.stopPropagation();runGemini(' + deal.id + ')" id="gemBtn-' + deal.id + '" class="mt-2 w-full bg-james-primary hover:bg-james-secondary text-white font-bold py-2 px-4 rounded-md transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed">Evaluate with Gemini \u2728</button>' +
-    '<div id="gemResult-' + deal.id + '" class="mt-2"></div></div>';
+  const dark = isDark();
+  return '<div class="mt-3 pt-3 border-t '+(dark?'border-gray-700':'border-gray-200')+'">'+
+    '<button onclick="event.stopPropagation();simulateGeminiEval('+deal.id+')" id="gemBtn-'+deal.id+'" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg text-xs transition-colors">✦ Ask Gemini to Evaluate</button>'+
+    '<div id="gemResult-'+deal.id+'" class="mt-2"></div></div>';
+}
+
+function notesSection(deal) {
+  const dark = isDark();
+  const noteCls = dark ? 'bg-gray-800 text-gray-300' : 'bg-gray-50 text-gray-700';
+  let html = '<div class="mt-3 pt-3 border-t '+(dark?'border-gray-700':'border-gray-200')+'">';
+  html += '<h4 class="text-xs font-semibold '+(dark?'text-gray-400':'text-gray-500')+' mb-2">Notes ('+deal.notes.length+')</h4>';
+  if (deal.notes.length > 0) {
+    html += '<div class="space-y-1.5 mb-2 max-h-32 overflow-y-auto dark-scroll">';
+    deal.notes.forEach(n => {
+      html += '<div class="'+noteCls+' rounded-lg px-3 py-2 text-xs">'+
+        '<div>'+esc(n.text)+'</div>'+
+        '<div class="opacity-50 mt-0.5">'+timeAgo(n.ts)+'</div></div>';
+    });
+    html += '</div>';
+  }
+  html += '<div class="flex gap-2">'+
+    '<input type="text" id="noteInput-'+deal.id+'" onclick="event.stopPropagation()" placeholder="Add a note..." class="flex-1 p-2 text-sm border rounded-lg '+(dark?'bg-gray-800 border-gray-600 text-gray-200 placeholder-gray-500':'bg-gray-50 border-gray-300 text-gray-700 placeholder-gray-400')+' focus:outline-none focus:ring-2 focus:ring-emerald-500">'+
+    '<button onclick="event.stopPropagation();addNote('+deal.id+')" class="px-3 py-2 text-sm font-medium rounded-lg '+(dark?'bg-gray-700 text-gray-300 hover:bg-gray-600':'bg-gray-200 text-gray-700 hover:bg-gray-300')+' transition-colors">Add</button></div></div>';
+  return html;
+}
+
+function statusActions(deal) {
+  const dark = isDark();
+  const next = STATUS_FLOW[deal.status] || [];
+  if (next.length === 0) return '';
+  return '<div class="flex flex-wrap gap-1.5 mt-3">'+
+    next.map(s => {
+      const cfg = STATUS[s];
+      const cls = dark ? cfg.dbg : cfg.bg;
+      return '<button onclick="event.stopPropagation();changeStatus('+deal.id+',\''+s+'\')" class="text-xs font-medium px-2.5 py-1 rounded-lg '+cls+' hover:opacity-80 transition-opacity">→ '+cfg.label+'</button>';
+    }).join('')+'</div>';
 }
 
 function renderJamesDealCard(deal) {
-  return '<div class="bg-james-card rounded-lg shadow-lg p-6 border border-gray-700 fade-in">' +
-    '<div class="flex justify-between items-start"><div>' +
-    '<h3 class="text-xl font-bold text-james-text">' + esc(deal.vendor) + '</h3>' +
-    '<p class="text-sm text-gray-400">Submitted: ' + fmtDate(deal.createdAt) + '</p></div>' +
-    '<div class="text-right"><div class="text-3xl font-bold text-james-primary">' + fmtMoney(deal.cost) + '</div>' +
-    '<div class="flex items-center justify-end gap-2 mt-1"><span class="text-xs font-semibold text-gray-400 bg-gray-700 px-2 py-1 rounded-full">' + esc(deal.region) + '</span>' +
-    '<div class="text-sm font-semibold text-gray-300">\uD83D\uDCC5 ' + esc(deal.executionWindow) + '</div></div></div></div>' +
-    '<p class="text-gray-300 my-4">' + esc(deal.description) + '</p>' +
-    (deal.terms ? '<p class="text-sm text-gray-400 italic mb-4">Terms: ' + esc(deal.terms) + '</p>' : '') +
-    geminiSection(deal) +
-    '<div class="flex justify-end space-x-3 mt-4">' +
-    '<button onclick="openDealForm(' + deal.id + ')" class="text-sm font-semibold bg-gray-600 text-gray-200 hover:bg-gray-500 px-4 py-2 rounded-md">\u270F\uFE0F Edit</button>' +
-    '<button onclick="removeDeal(' + deal.id + ')" class="text-sm font-semibold bg-red-800 text-red-200 hover:bg-red-700 px-4 py-2 rounded-md">\uD83D\uDDD1\uFE0F Remove</button>' +
+  const dark = isDark();
+  const card = dark ? 'bg-j-card border-gray-700' : 'bg-white border-gray-200 shadow-sm';
+  const textMain = dark ? 'text-j-text' : 'text-gray-800';
+  const textSub = dark ? 'text-gray-400' : 'text-gray-500';
+  const selected = S.selectedDeals.has(deal.id);
+  const selBorder = selected ? (dark?'ring-2 ring-emerald-500':'ring-2 ring-blue-500') : '';
+
+  return '<div class="border rounded-xl p-4 sm:p-5 '+card+' '+selBorder+' fade-in">'+
+    '<div class="flex items-start justify-between gap-2">'+
+    '<div class="flex items-start gap-3 min-w-0">'+
+    '<input type="checkbox" '+(selected?'checked':'')+' onchange="toggleSelectDeal('+deal.id+')" class="mt-1 flex-shrink-0 w-4 h-4 rounded accent-emerald-500">'+
+    '<div class="min-w-0"><div class="flex items-center gap-2 flex-wrap">'+vendorDot(deal.vendor)+
+    '<h3 class="font-bold '+textMain+'">'+esc(deal.vendor)+'</h3>'+
+    statusBadge(deal.status, dark)+
+    urgencyBadge(deal.executionWindow, dark)+'</div>'+
+    '<p class="text-xs '+textSub+' mt-0.5">'+fmtDate(deal.createdAt)+'</p></div></div>'+
+    '<div class="text-right flex-shrink-0">'+
+    '<div class="text-xl sm:text-2xl font-bold '+(dark?'text-emerald-400':'text-emerald-600')+'">'+fmtMoney(deal.cost)+'</div>'+
+    '<div class="flex items-center justify-end gap-2 mt-1">'+
+    '<span class="text-xs font-medium '+textSub+' '+(dark?'bg-gray-700':'bg-gray-100')+' px-2 py-0.5 rounded-full">'+esc(deal.region)+'</span>'+
+    '<span class="text-xs '+textSub+'">'+esc(deal.executionWindow)+'</span></div></div></div>'+
+    '<p class="text-sm '+textSub+' my-3">'+esc(deal.description)+'</p>'+
+    (deal.terms?'<p class="text-xs '+textSub+' italic mb-2">Terms: '+esc(deal.terms)+'</p>':'')+
+    statusActions(deal)+
+    notesSection(deal)+
+    geminiSection(deal)+
+    '<div class="flex flex-wrap justify-end gap-2 mt-3 pt-3 border-t '+(dark?'border-gray-700':'border-gray-100')+'">'+
+    '<button onclick="openDealForm('+deal.id+')" class="text-xs font-medium '+(dark?'bg-gray-600 text-gray-200 hover:bg-gray-500':'bg-gray-100 text-gray-700 hover:bg-gray-200')+' px-3 py-1.5 rounded-lg transition-colors">Edit</button>'+
+    '<button onclick="removeDeal('+deal.id+')" class="text-xs font-medium '+(dark?'bg-red-900/50 text-red-300 hover:bg-red-800/50':'bg-red-50 text-red-700 hover:bg-red-100')+' px-3 py-1.5 rounded-lg transition-colors">Remove</button>'+
     '</div></div>';
 }
 
 function renderJamesListItem(deal) {
+  const dark = isDark();
   const exp = expandedRows.has(deal.id);
-  return '<div class="border-b border-gray-700 last:border-b-0">' +
-    '<div onclick="toggleJamesRow(' + deal.id + ')" class="flex items-center p-4 cursor-pointer hover:bg-gray-800 transition-colors" role="button">' +
-    '<div class="flex-1 font-semibold text-james-text truncate pr-4">' + esc(deal.vendor) + '</div>' +
-    '<div class="w-24 text-gray-400 hidden lg:block truncate pr-4">' + esc(deal.region) + '</div>' +
-    '<div class="flex-1 text-gray-400 hidden md:block truncate pr-4">' + esc(deal.description) + '</div>' +
-    '<div class="w-32 text-right font-bold text-james-primary flex-shrink-0">' + fmtMoney(deal.cost) + '</div>' +
-    '<div class="w-32 text-right text-gray-300 hidden sm:block flex-shrink-0">' + esc(deal.executionWindow) + '</div>' +
-    '<div class="w-16 text-right text-gray-400 flex-shrink-0"><svg class="w-6 h-6 inline transform transition-transform ' + (exp ? 'rotate-180' : '') + '" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></div>' +
-    '</div>' +
-    (exp ? '<div class="p-6 bg-gray-900/50 fade-in">' +
-      '<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">' +
-      '<div><h4 class="font-semibold text-james-text mb-1">Full Description</h4><p class="text-gray-300">' + esc(deal.description) + '</p></div>' +
-      '<div><h4 class="font-semibold text-james-text mb-1">Details</h4><p class="text-sm text-gray-400"><strong>Region:</strong> ' + esc(deal.region) + '</p>' +
-      (deal.terms ? '<p class="text-sm text-gray-400 mt-2"><strong>Terms:</strong> ' + esc(deal.terms) + '</p>' : '') + '</div></div>' +
-      geminiSection(deal) +
-      '<div class="flex justify-end space-x-3 mt-4">' +
-      '<button onclick="event.stopPropagation();openDealForm(' + deal.id + ')" class="text-sm font-semibold bg-gray-600 text-gray-200 hover:bg-gray-500 px-4 py-2 rounded-md">\u270F\uFE0F Edit</button>' +
-      '<button onclick="event.stopPropagation();removeDeal(' + deal.id + ')" class="text-sm font-semibold bg-red-800 text-red-200 hover:bg-red-700 px-4 py-2 rounded-md">\uD83D\uDDD1\uFE0F Remove</button>' +
-      '</div></div>' : '') +
+  const selected = S.selectedDeals.has(deal.id);
+  const textMain = dark ? 'text-j-text' : 'text-gray-800';
+  const textSub = dark ? 'text-gray-400' : 'text-gray-500';
+  const hoverBg = dark ? 'hover:bg-gray-800' : 'hover:bg-gray-50';
+  const border = dark ? 'border-gray-700' : 'border-gray-200';
+
+  let html = '<div class="border-b last:border-b-0 '+border+'">';
+  html += '<div onclick="toggleJamesRow('+deal.id+')" class="flex items-center p-3 sm:p-4 cursor-pointer '+hoverBg+' transition-colors" role="button">'+
+    '<input type="checkbox" '+(selected?'checked':'')+' onclick="event.stopPropagation()" onchange="toggleSelectDeal('+deal.id+')" class="mr-3 flex-shrink-0 w-4 h-4 rounded accent-emerald-500">'+
+    '<div class="flex items-center gap-2 flex-1 min-w-0">'+vendorDot(deal.vendor)+
+    '<span class="font-semibold '+textMain+' truncate">'+esc(deal.vendor)+'</span>'+
+    statusBadge(deal.status, dark)+'</div>'+
+    '<div class="w-20 '+textSub+' text-xs hidden lg:block truncate px-2">'+esc(deal.region)+'</div>'+
+    '<div class="w-28 text-right font-bold '+(dark?'text-emerald-400':'text-emerald-600')+' flex-shrink-0 text-sm">'+fmtMoney(deal.cost)+'</div>'+
+    '<div class="w-28 text-right '+textSub+' hidden sm:block flex-shrink-0 text-xs px-2">'+esc(deal.executionWindow)+'</div>'+
+    urgencyBadge(deal.executionWindow, dark)+
+    '<svg class="w-5 h-5 '+textSub+' ml-2 flex-shrink-0 transform transition-transform '+(exp?'rotate-180':'')+'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>'+
     '</div>';
+
+  if (exp) {
+    html += '<div class="p-4 sm:p-5 '+(dark?'bg-gray-900/50':'bg-gray-50')+' fade-in">'+
+      '<p class="text-sm '+textSub+' mb-3">'+esc(deal.description)+'</p>'+
+      (deal.terms?'<p class="text-xs '+textSub+' italic mb-3">Terms: '+esc(deal.terms)+'</p>':'')+
+      statusActions(deal)+notesSection(deal)+geminiSection(deal)+
+      '<div class="flex flex-wrap justify-end gap-2 mt-3">'+
+      '<button onclick="event.stopPropagation();openDealForm('+deal.id+')" class="text-xs font-medium '+(dark?'bg-gray-600 text-gray-200 hover:bg-gray-500':'bg-gray-200 text-gray-700 hover:bg-gray-300')+' px-3 py-1.5 rounded-lg">Edit</button>'+
+      '<button onclick="event.stopPropagation();removeDeal('+deal.id+')" class="text-xs font-medium '+(dark?'bg-red-900/50 text-red-300 hover:bg-red-800/50':'bg-red-50 text-red-700 hover:bg-red-100')+' px-3 py-1.5 rounded-lg">Remove</button></div></div>';
+  }
+  html += '</div>';
+  return html;
 }
 
 function toggleJamesRow(id) {
@@ -327,115 +960,161 @@ function toggleJamesRow(id) {
 }
 
 function renderJamesMode() {
+  const dark = isDark();
   const deals = getFilteredDeals();
-  const vendors = getUniqueVendors();
-  const geminiKey = localStorage.getItem(GEMINI_KEY_STORAGE) || '';
-  const monthlyLink = 'mailto:?bcc=' + state.vendorEmails.join(',') + '&subject=' + encodeURIComponent('Monthly Media Deal Update Request') + '&body=' + encodeURIComponent('Hi Partners,\n\nPlease use our MFG Media Deal Hub to update your latest available deals for the upcoming month.\n\nWe look forward to seeing what you have to offer!\n\nBest,\nJames Palmer');
-  const vm = state.jamesViewMode;
+  const allDeals = S.deals;
+  const textMain = dark ? 'text-j-text' : 'text-gray-800';
+  const textSub = dark ? 'text-gray-400' : 'text-gray-500';
+  const card = dark ? 'bg-j-card border border-gray-700' : 'bg-white border border-gray-200 shadow-sm';
+  const vm = S.viewMode;
+
+  const monthlyLink = 'mailto:?bcc='+S.vendorEmails.join(',')+'&subject='+encodeURIComponent('Monthly Media Deal Update Request')+'&body='+encodeURIComponent('Hi Partners,\n\nPlease use the MFG Media Deal Hub to update your latest available deals.\n\nBest,\nJames Palmer');
 
   let dealsHtml;
+  const hasFilter = S.searchQuery || S.vendorFilter !== 'all' || S.statusFilter !== 'all' || S.regionFilter !== 'all';
   if (deals.length === 0) {
-    const hasFilter = state.searchQuery || state.jamesVendorFilter !== 'all';
-    dealsHtml = '<div class="text-center py-16 bg-james-card rounded-lg shadow-lg"><p class="text-2xl text-gray-400">' + (hasFilter ? 'No deals match your search or filter.' : 'The deal pipeline is empty.') + '</p><p class="text-gray-500 mt-2">' + (hasFilter ? 'Try a different search term or filter.' : 'Waiting for partners to submit deals... \u23F3') + '</p></div>';
+    dealsHtml = '<div class="text-center py-16 '+card+' rounded-xl"><p class="text-lg '+textSub+'">'+(hasFilter?'No deals match your filters.':'The pipeline is empty.')+'</p></div>';
   } else if (vm === 'tiles') {
-    dealsHtml = '<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">' + deals.map(d => renderJamesDealCard(d)).join('') + '</div>';
+    dealsHtml = '<div class="grid grid-cols-1 xl:grid-cols-2 gap-4">'+deals.map(d=>renderJamesDealCard(d)).join('')+'</div>';
   } else {
-    dealsHtml = '<div class="bg-james-card rounded-lg shadow-lg overflow-hidden border border-gray-700">' +
-      '<div class="flex items-center p-4 bg-gray-900/75 font-semibold text-gray-400 text-sm"><div class="flex-1">VENDOR</div><div class="w-24 hidden lg:block">REGION</div><div class="flex-1 hidden md:block">DESCRIPTION</div><div class="w-32 text-right">COST</div><div class="w-32 text-right hidden sm:block">WINDOW</div><div class="w-16 text-right"></div></div>' +
-      deals.map(d => renderJamesListItem(d)).join('') + '</div>';
+    const headerBg = dark ? 'bg-gray-800' : 'bg-gray-50';
+    dealsHtml = '<div class="'+card+' rounded-xl overflow-hidden">'+
+      '<div class="flex items-center p-3 sm:p-4 '+headerBg+' font-medium '+textSub+' text-xs">'+
+      '<div class="mr-3 w-4"></div><div class="flex-1">VENDOR</div>'+
+      '<div class="w-20 hidden lg:block">REGION</div>'+
+      '<div class="w-28 text-right">COST</div>'+
+      '<div class="w-28 text-right hidden sm:block">WINDOW</div>'+
+      '<div class="w-20"></div><div class="w-7"></div></div>'+
+      deals.map(d=>renderJamesListItem(d)).join('')+'</div>';
   }
 
-  return '<div class="p-4 sm:p-8"><div class="max-w-7xl mx-auto">' +
-    '<h1 class="text-4xl font-bold text-james-text mb-8">\uD83D\uDD75\uFE0F James\' Evaluation Console</h1>' +
-    '<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">' +
-    '<div class="lg:col-span-2">' +
-    '<div class="flex flex-wrap justify-between items-center gap-4 mb-4">' +
-    '<h2 class="text-2xl font-semibold text-james-text">Active Deals (' + deals.length + ')</h2>' +
-    '<div class="flex items-center gap-2 sm:gap-4">' +
-    '<select onchange="state.jamesVendorFilter=this.value;render()" class="p-2 border rounded-md bg-gray-700 border-gray-600 text-gray-300 focus:ring-james-primary text-sm">' +
-    vendors.map(v => '<option value="' + v + '"' + (state.jamesVendorFilter === v ? ' selected' : '') + '>' + (v === 'all' ? 'All Vendors' : v) + '</option>').join('') + '</select>' +
-    '<div class="flex items-center bg-james-card border border-gray-700 rounded-md p-1">' +
-    '<button onclick="state.jamesViewMode=\'tiles\';render()" class="px-3 py-1 rounded text-sm transition-colors ' + (vm === 'tiles' ? 'bg-james-primary text-white' : 'text-gray-400 hover:bg-gray-700') + '">Tiles</button>' +
-    '<button onclick="state.jamesViewMode=\'list\';render()" class="px-3 py-1 rounded text-sm transition-colors ' + (vm === 'list' ? 'bg-james-primary text-white' : 'text-gray-400 hover:bg-gray-700') + '">List</button>' +
-    '</div></div></div>' +
-    renderFilterSort(true) +
-    dealsHtml +
-    '</div>' +
-    '<div class="lg:col-span-1"><div class="bg-james-card rounded-lg shadow-lg p-6 sticky top-24">' +
-    '<h2 class="text-2xl font-semibold text-james-text mb-4">Vendor Comms \uD83D\uDCE7</h2>' +
-    '<div class="space-y-2 mb-4 max-h-48 overflow-y-auto dark-scroll">' +
-    state.vendorEmails.map(e => '<div class="flex justify-between items-center bg-gray-800 p-2 rounded"><span class="text-gray-300 text-sm truncate">' + esc(e) + '</span><button onclick="removeVendorEmail(\'' + esc(e) + '\')" class="text-red-400 hover:text-red-300 flex-shrink-0 ml-2">&times;</button></div>').join('') +
-    '</div>' +
-    '<div class="flex space-x-2"><input type="email" id="newEmailInput" placeholder="Add new vendor email" class="flex-grow p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-james-primary">' +
-    '<button onclick="addVendorEmail()" class="bg-james-primary hover:bg-james-secondary text-white font-bold py-2 px-3 rounded-md transition-transform hover:scale-105">+</button></div>' +
-    '<a href="' + monthlyLink + '" class="mt-4 w-full block text-center bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-md transition-colors">Send Monthly Update Request</a>' +
-    '<div class="mt-6 pt-4 border-t border-gray-700">' +
-    '<h3 class="text-sm font-semibold text-gray-400 mb-2">\uD83D\uDD11 Gemini API Key</h3>' +
-    '<input type="password" id="geminiKeyInput" value="' + esc(geminiKey) + '" placeholder="Enter your Gemini API key" class="w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-james-primary text-sm">' +
-    '<button onclick="saveGeminiKey()" class="mt-2 w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-1.5 px-4 rounded-md text-sm transition-colors">Save Key</button>' +
-    '</div></div></div>' +
-    '</div></div></div>';
+  // Main layout
+  let html = '<div class="p-3 sm:p-6 lg:p-8"><div class="max-w-7xl mx-auto">';
+
+  // Title + actions
+  html += '<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">'+
+    '<div><h1 class="text-2xl sm:text-3xl font-bold '+textMain+'">Evaluation Console</h1>'+
+    '<p class="text-sm '+textSub+' mt-1">Review, evaluate, and manage media deal proposals</p></div>'+
+    '<div class="flex items-center gap-2">'+
+    '<button onclick="openDealForm()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 px-5 rounded-xl shadow-sm transition-colors active:scale-95 text-sm">+ New Deal</button></div></div>';
+
+  // Stats
+  html += renderStats(allDeals);
+
+  // Layout: main + sidebar
+  html += '<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">';
+
+  // Main content (3/4)
+  html += '<div class="lg:col-span-3">';
+
+  // Gemini Finder
+  html += renderGeminiFinder();
+
+  // View controls
+  html += '<div class="flex flex-wrap items-center justify-between gap-3 mb-4">'+
+    '<div class="flex items-center gap-3">'+
+    '<h2 class="text-lg font-semibold '+textMain+'">Deals ('+deals.length+')</h2>'+
+    '<button onclick="selectAllVisible()" class="text-xs '+textSub+' hover:underline">'+(S.selectedDeals.size===deals.length&&deals.length>0?'Deselect All':'Select All')+'</button></div>'+
+    '<div class="flex items-center gap-2">'+
+    '<div class="flex '+(dark?'bg-gray-800 border-gray-700':'bg-gray-100 border-gray-200')+' border rounded-lg p-0.5">'+
+    '<button onclick="S.viewMode=\'tiles\';render()" class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors '+(vm==='tiles'?'bg-emerald-500 text-white':(dark?'text-gray-400 hover:bg-gray-700':'text-gray-500 hover:bg-gray-200'))+'">Tiles</button>'+
+    '<button onclick="S.viewMode=\'list\';render()" class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors '+(vm==='list'?'bg-emerald-500 text-white':(dark?'text-gray-400 hover:bg-gray-700':'text-gray-500 hover:bg-gray-200'))+'">List</button></div></div></div>';
+
+  html += renderFilterBar();
+  html += dealsHtml;
+  html += '</div>';
+
+  // Sidebar (1/4)
+  html += '<div class="lg:col-span-1"><div class="space-y-4 lg:sticky lg:top-20">';
+
+  // Activity Feed
+  html += '<div class="'+card+' rounded-xl p-4">'+
+    '<h3 class="font-semibold '+textMain+' mb-3 text-sm">Recent Activity</h3>'+
+    renderActivityFeed()+'</div>';
+
+  // Vendor Comms
+  html += '<div class="'+card+' rounded-xl p-4">'+
+    '<h3 class="font-semibold '+textMain+' mb-3 text-sm">Vendor Comms</h3>'+
+    '<div class="space-y-1.5 mb-3 max-h-36 overflow-y-auto dark-scroll">'+
+    S.vendorEmails.map((e,i) => '<div class="flex items-center justify-between '+(dark?'bg-gray-800':'bg-gray-50')+' p-2 rounded-lg">'+
+      '<span class="'+textSub+' text-xs truncate">'+esc(e)+'</span>'+
+      '<button onclick="removeVendorEmail('+i+')" class="text-red-400 hover:text-red-300 flex-shrink-0 ml-2 p-1">&times;</button></div>'
+    ).join('')+'</div>'+
+    '<div class="flex gap-2"><input type="email" id="newEmailInput" placeholder="vendor@email.com" class="flex-1 p-2 text-sm border rounded-lg '+(dark?'bg-gray-800 border-gray-600 text-gray-200 placeholder-gray-500':'bg-gray-50 border-gray-300 text-gray-700 placeholder-gray-400')+' focus:outline-none focus:ring-2 focus:ring-emerald-500">'+
+    '<button onclick="addVendorEmail()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-3 rounded-lg transition-colors text-sm">+</button></div>'+
+    '<a href="'+monthlyLink+'" class="mt-3 w-full block text-center text-xs font-medium '+(dark?'bg-gray-700 text-gray-300 hover:bg-gray-600':'bg-gray-100 text-gray-700 hover:bg-gray-200')+' py-2 px-4 rounded-lg transition-colors">Send Monthly Update</a></div>';
+
+  // Gemini branding
+  html += '<div class="'+card+' rounded-xl p-4 text-center">'+
+    '<div class="text-xs '+textSub+'">Powered by</div>'+
+    '<div class="font-semibold '+(dark?'text-red-400':'text-red-600')+' text-sm mt-1">Google Gemini AI</div>'+
+    '<div class="text-xs '+textSub+' mt-1">Simulated demo mode</div></div>';
+
+  html += '</div></div>'; // end sidebar
+  html += '</div>'; // end grid
+  html += '</div></div>'; // end container
+  return html;
 }
 
 function addVendorEmail() {
   const input = document.getElementById('newEmailInput');
   const email = input.value.trim();
-  if (email && !state.vendorEmails.includes(email)) {
-    state.vendorEmails.push(email);
+  if (!email || !email.includes('@')) return;
+  if (!S.vendorEmails.includes(email)) {
+    S.vendorEmails.push(email);
+    save(STORE.emails, S.vendorEmails);
     render();
   }
 }
 
-function removeVendorEmail(email) {
-  state.vendorEmails = state.vendorEmails.filter(e => e !== email);
+function removeVendorEmail(idx) {
+  S.vendorEmails.splice(idx, 1);
+  save(STORE.emails, S.vendorEmails);
   render();
 }
 
-function saveGeminiKey() {
-  const input = document.getElementById('geminiKeyInput');
-  localStorage.setItem(GEMINI_KEY_STORAGE, input.value.trim());
-  alert('Gemini API key saved.');
-}
 
-// ============================================================
+// ================================================================
 // MODALS
-// ============================================================
-let _partnerSelected = '';
+// ================================================================
+let _partnerIdx = -1;
 
 function showPartnerSelection() {
-  _partnerSelected = '';
+  _partnerIdx = -1;
   const partners = [...majorPartners, 'Other'];
   const el = document.createElement('div');
   el.id = 'partnerModal';
-  el.className = 'fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4 fade-in';
-  el.innerHTML = '<div class="bg-partner-card rounded-lg p-8 shadow-2xl w-full max-w-lg relative">' +
-    '<button onclick="closeModal(\'partnerModal\')" class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 text-2xl">&times;</button>' +
-    '<h2 class="text-2xl font-bold text-partner-text mb-2">Identify Yourself</h2>' +
-    '<p class="text-gray-600 mb-6">Please select your company to continue.</p>' +
-    '<div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center" id="partnerGrid">' +
-    partners.map(p => '<button onclick="selectPartner(this, \'' + esc(p) + '\')" class="p-4 border rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 hover:shadow-md bg-white text-gray-700 hover:bg-gray-50">' + p + '</button>').join('') +
-    '</div>' +
-    '<div id="otherPartnerInput" class="hidden mt-4"><label class="block text-sm font-medium text-gray-700 mb-1">Company Name</label>' +
-    '<input id="otherPartnerName" type="text" placeholder="Enter your company name" class="w-full p-2 border rounded-md bg-white border-gray-300 focus:ring-2 focus:ring-partner-primary"></div>' +
-    '<p id="partnerError" class="text-red-500 mt-4 text-sm hidden"></p>' +
-    '<button onclick="confirmPartnerSelection()" id="partnerContinueBtn" disabled class="w-full bg-partner-primary hover:bg-partner-secondary text-white font-bold py-3 px-4 rounded-md mt-6 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">Continue</button>' +
-    '</div>';
+  el.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-3 sm:p-4 fade-in';
+  el.innerHTML = '<div class="bg-white rounded-2xl p-5 sm:p-8 shadow-2xl w-full max-w-lg relative max-h-[90vh] overflow-y-auto">'+
+    '<button onclick="closeModal(\'partnerModal\')" class="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-2xl">&times;</button>'+
+    '<h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Identify Yourself</h2>'+
+    '<p class="text-gray-500 text-sm mb-5">Select your company to continue.</p>'+
+    '<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[45vh] overflow-y-auto" id="partnerGrid">'+
+    partners.map((p,i) => '<button onclick="selectPartner(this,'+i+')" class="p-3 border border-gray-200 rounded-xl font-medium text-sm transition-all hover:shadow-md bg-white text-gray-700 hover:bg-gray-50 active:scale-95">'+esc(p)+'</button>').join('')+
+    '</div>'+
+    '<div id="otherPartnerInput" class="hidden mt-4"><label class="block text-sm font-medium text-gray-700 mb-1">Company Name</label>'+
+    '<input id="otherPartnerName" type="text" placeholder="Enter company name" class="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"></div>'+
+    '<p id="partnerError" class="text-red-500 mt-3 text-sm hidden"></p>'+
+    '<button onclick="confirmPartnerSelection()" id="partnerContinueBtn" disabled class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl mt-5 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">Continue</button></div>';
   document.body.appendChild(el);
 }
 
-function selectPartner(btn, name) {
-  _partnerSelected = name;
+function selectPartner(btn, idx) {
+  _partnerIdx = idx;
+  const partners = [...majorPartners, 'Other'];
   document.getElementById('partnerGrid').querySelectorAll('button').forEach(b => {
-    b.className = 'p-4 border rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 hover:shadow-md bg-white text-gray-700 hover:bg-gray-50';
+    b.className = 'p-3 border border-gray-200 rounded-xl font-medium text-sm transition-all hover:shadow-md bg-white text-gray-700 hover:bg-gray-50 active:scale-95';
   });
-  btn.className = 'p-4 border rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 hover:shadow-md bg-partner-primary text-white ring-2 ring-offset-2 ring-partner-secondary';
-  document.getElementById('otherPartnerInput').classList.toggle('hidden', name !== 'Other');
+  btn.className = 'p-3 border-2 border-blue-500 rounded-xl font-medium text-sm transition-all bg-blue-50 text-blue-700 ring-2 ring-blue-200';
+  document.getElementById('otherPartnerInput').classList.toggle('hidden', partners[idx] !== 'Other');
   document.getElementById('partnerContinueBtn').disabled = false;
   document.getElementById('partnerError').classList.add('hidden');
 }
 
 function confirmPartnerSelection() {
-  let partner = _partnerSelected;
+  const partners = [...majorPartners, 'Other'];
+  if (_partnerIdx < 0) return;
+  let partner = partners[_partnerIdx];
   if (partner === 'Other') {
     partner = document.getElementById('otherPartnerName').value.trim();
     if (!partner) {
@@ -445,95 +1124,83 @@ function confirmPartnerSelection() {
       return;
     }
   }
-  if (!partner) {
-    const err = document.getElementById('partnerError');
-    err.textContent = 'Please select your company from the list.';
-    err.classList.remove('hidden');
-    return;
-  }
-  state.currentPartner = partner;
-  state.mode = 'partner';
+  S.currentPartner = partner;
+  S.mode = 'partner';
   closeModal('partnerModal');
   render();
 }
 
-function showPasswordModal() {
-  const el = document.createElement('div');
-  el.id = 'passwordModal';
-  el.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 fade-in';
-  el.innerHTML = '<div class="bg-james-card rounded-lg p-8 shadow-2xl w-full max-w-md">' +
-    '<div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold text-james-text">\uD83D\uDD12 James Mode Access</h2>' +
-    '<button onclick="closeModal(\'passwordModal\')" class="text-gray-400 hover:text-white text-2xl">&times;</button></div>' +
-    '<p class="text-gray-300 mb-4">This area is restricted. Please enter the password to continue.</p>' +
-    '<form onsubmit="return handlePasswordSubmit(event)">' +
-    '<input type="password" id="jamesPassword" placeholder="Enter password..." class="w-full bg-gray-800 border border-gray-600 rounded-md px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-james-primary">' +
-    '<p id="passwordError" class="text-red-500 mt-2 text-sm hidden"></p>' +
-    '<button type="submit" class="w-full bg-james-primary hover:bg-james-secondary text-white font-bold py-2 px-4 rounded-md mt-6 transition-colors">Unlock</button>' +
-    '</form></div>';
-  document.body.appendChild(el);
-  setTimeout(() => document.getElementById('jamesPassword')?.focus(), 100);
+function enterJamesMode() {
+  S.isAuthenticated = true;
+  S.mode = 'james';
+  render();
 }
 
-function handlePasswordSubmit(e) {
-  e.preventDefault();
-  if (document.getElementById('jamesPassword').value === 'Jamesrocks') {
-    state.isAuthenticated = true;
-    state.mode = 'james';
-    closeModal('passwordModal');
-    render();
-  } else {
-    const err = document.getElementById('passwordError');
-    err.textContent = 'Incorrect password. Please try again.';
-    err.classList.remove('hidden');
-  }
-  return false;
-}
-
-function closeModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.remove();
-}
-
-// ============================================================
-// DEAL FORM MODAL
-// ============================================================
 function openDealForm(editId) {
-  const deal = editId ? state.deals.find(d => d.id === editId) : null;
-  const isPartner = state.mode === 'partner';
-  const isJames = state.mode === 'james';
-  const t = isJames
-    ? { bg: 'bg-james-bg bg-opacity-75', card: 'bg-james-card', text: 'text-james-text', primary: 'bg-james-primary', hover: 'hover:bg-james-secondary', input: 'bg-gray-700 border-gray-600 text-white focus:ring-james-primary', label: 'text-gray-300', cancel: 'bg-gray-600 hover:bg-gray-500 text-gray-200' }
-    : { bg: 'bg-partner-bg bg-opacity-75', card: 'bg-partner-card', text: 'text-partner-text', primary: 'bg-partner-primary', hover: 'hover:bg-partner-secondary', input: 'bg-white border-gray-300 focus:ring-partner-primary', label: 'text-gray-700', cancel: 'bg-gray-200 hover:bg-gray-300 text-gray-700' };
-  const vendorVal = deal ? deal.vendor : (isPartner && state.currentPartner ? state.currentPartner : '');
+  const deal = editId ? S.deals.find(d => d.id === editId) : null;
+  const isJames = S.mode === 'james';
+  const dark = isJames && isDark();
+  const bgModal = dark ? 'bg-j-bg/90' : 'bg-gray-500/50';
+  const cardCls = dark ? 'bg-j-card text-j-text' : 'bg-white text-gray-800';
+  const inputCls = dark ? 'bg-gray-700 border-gray-600 text-white focus:ring-emerald-500' : 'bg-white border-gray-300 text-gray-800 focus:ring-blue-500';
+  const lblCls = dark ? 'text-gray-300' : 'text-gray-700';
+  const cancelCls = dark ? 'bg-gray-600 hover:bg-gray-500 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700';
+  const saveCls = dark ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-600 hover:bg-blue-700';
+  const vendorVal = deal ? deal.vendor : (S.mode === 'partner' && S.currentPartner ? S.currentPartner : '');
 
   const el = document.createElement('div');
   el.id = 'dealFormModal';
-  el.className = 'fixed inset-0 ' + t.bg + ' flex items-center justify-center z-40 fade-in p-4';
-  el.innerHTML = '<div class="' + t.card + ' rounded-lg p-8 shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">' +
-    '<h2 class="text-2xl font-bold mb-6 ' + t.text + '">' + (deal ? '\u270F\uFE0F Edit Deal' : '\u2728 Add New Deal') + '</h2>' +
-    '<div id="dealFormError" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 hidden"></div>' +
-    '<form onsubmit="return submitDealForm(event, ' + (editId || 'null') + ')">' +
-    '<div class="space-y-4">' +
-    '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">' +
-    '<div><label class="block text-sm font-medium mb-1 ' + t.label + '">Vendor Name</label>' +
-    '<input type="text" id="dfVendor" value="' + esc(vendorVal) + '" placeholder="Vendor company name" ' + (isPartner ? 'readonly' : '') + ' class="w-full p-2 border rounded-md ' + t.input + (isPartner ? ' bg-gray-200 text-gray-500 cursor-not-allowed' : '') + '"></div>' +
-    '<div><label class="block text-sm font-medium mb-1 ' + t.label + '">Region</label>' +
-    '<select id="dfRegion" class="w-full p-2 border rounded-md ' + t.input + '">' +
-    regions.map(r => '<option value="' + r + '"' + (deal && deal.region === r ? ' selected' : '') + '>' + r + '</option>').join('') + '</select></div></div>' +
-    '<div><label class="block text-sm font-medium mb-1 ' + t.label + '">Deal Description</label>' +
-    '<textarea id="dfDesc" rows="4" placeholder="Describe the media deal, what\'s included?" class="w-full p-2 border rounded-md ' + t.input + '">' + (deal ? esc(deal.description) : '') + '</textarea></div>' +
-    '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">' +
-    '<div><label class="block text-sm font-medium mb-1 ' + t.label + '">Cost ($)</label>' +
-    '<input type="number" id="dfCost" value="' + (deal ? deal.cost : '') + '" placeholder="e.g., 50000" class="w-full p-2 border rounded-md ' + t.input + '"></div>' +
-    '<div><label class="block text-sm font-medium mb-1 ' + t.label + '">Execution Window</label>' +
-    '<input type="text" id="dfWindow" value="' + (deal ? esc(deal.executionWindow) : '') + '" placeholder="e.g., Q4 2024, November 1-15" class="w-full p-2 border rounded-md ' + t.input + '"></div></div>' +
-    '<div><label class="block text-sm font-medium mb-1 ' + t.label + '">Special Terms (optional)</label>' +
-    '<textarea id="dfTerms" rows="3" placeholder="Any discounts, deadlines, or special conditions?" class="w-full p-2 border rounded-md ' + t.input + '">' + (deal ? esc(deal.terms) : '') + '</textarea></div>' +
-    '<div class="flex justify-end space-x-4 pt-4">' +
-    '<button type="button" onclick="closeModal(\'dealFormModal\')" class="py-2 px-4 rounded-md font-semibold ' + t.cancel + '">Cancel</button>' +
-    '<button type="submit" class="py-2 px-6 rounded-md font-semibold text-white ' + t.primary + ' ' + t.hover + ' transition-colors">Save Deal</button>' +
+  el.className = 'fixed inset-0 '+bgModal+' backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 fade-in';
+
+  let templateHtml = '';
+  if (!deal && isJames) {
+    templateHtml = '<div class="mb-4"><label class="block text-xs font-medium mb-1 '+lblCls+'">Quick Template</label>'+
+      '<select id="templateSelect" onchange="applyTemplate(this.value)" class="w-full p-2 border rounded-xl '+inputCls+'">'+
+      '<option value="">— Choose a template —</option>'+
+      TEMPLATES.map((t,i) => '<option value="'+i+'">'+esc(t.name)+'</option>').join('')+'</select></div>';
+  }
+
+  el.innerHTML = '<div class="'+cardCls+' rounded-2xl p-5 sm:p-8 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">'+
+    '<div class="flex justify-between items-center mb-5"><h2 class="text-xl font-bold">'+(deal?'Edit Deal':'New Deal')+'</h2>'+
+    '<button onclick="closeModal(\'dealFormModal\')" class="text-2xl '+(dark?'text-gray-400 hover:text-white':'text-gray-400 hover:text-gray-700')+'">&times;</button></div>'+
+    '<div id="dealFormError" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded hidden text-sm"></div>'+
+    templateHtml+
+    '<form onsubmit="return submitDealForm(event, '+(editId||'null')+')">'+
+    '<div class="space-y-4">'+
+    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">'+
+    '<div><label class="block text-xs font-medium mb-1 '+lblCls+'">Vendor</label>'+
+    '<input type="text" id="dfVendor" value="'+escAttr(vendorVal)+'" placeholder="Vendor name" '+(S.mode==='partner'?'readonly':'')+' class="w-full p-2.5 border rounded-xl '+inputCls+(S.mode==='partner'?' opacity-60 cursor-not-allowed':'')+'"></div>'+
+    '<div><label class="block text-xs font-medium mb-1 '+lblCls+'">Region</label>'+
+    '<select id="dfRegion" class="w-full p-2.5 border rounded-xl '+inputCls+'">'+
+    regions.map(r => '<option value="'+r+'"'+(deal&&deal.region===r?' selected':'')+'>'+r+'</option>').join('')+'</select></div></div>'+
+    '<div><label class="block text-xs font-medium mb-1 '+lblCls+'">Description</label>'+
+    '<textarea id="dfDesc" rows="3" placeholder="Describe the deal..." class="w-full p-2.5 border rounded-xl '+inputCls+'">'+(deal?esc(deal.description):'')+'</textarea></div>'+
+    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">'+
+    '<div><label class="block text-xs font-medium mb-1 '+lblCls+'">Cost ($)</label>'+
+    '<input type="number" id="dfCost" value="'+(deal?deal.cost:'')+'" placeholder="e.g. 50000" class="w-full p-2.5 border rounded-xl '+inputCls+'"></div>'+
+    '<div><label class="block text-xs font-medium mb-1 '+lblCls+'">Execution Window</label>'+
+    '<input type="text" id="dfWindow" value="'+(deal?escAttr(deal.executionWindow):'')+'" placeholder="e.g. Q3 2026" class="w-full p-2.5 border rounded-xl '+inputCls+'"></div></div>'+
+    '<div><label class="block text-xs font-medium mb-1 '+lblCls+'">Terms (optional)</label>'+
+    '<textarea id="dfTerms" rows="2" placeholder="Any special conditions..." class="w-full p-2.5 border rounded-xl '+inputCls+'">'+(deal?esc(deal.terms):'')+'</textarea></div>'+
+    '<div class="flex justify-end gap-3 pt-3">'+
+    '<button type="button" onclick="closeModal(\'dealFormModal\')" class="py-2.5 px-5 rounded-xl font-medium '+cancelCls+' transition-colors">Cancel</button>'+
+    '<button type="submit" class="py-2.5 px-6 rounded-xl font-medium text-white '+saveCls+' transition-colors">Save Deal</button>'+
     '</div></div></form></div>';
   document.body.appendChild(el);
+}
+
+function applyTemplate(idx) {
+  if (idx === '') return;
+  const t = TEMPLATES[+idx];
+  if (!t) return;
+  document.getElementById('dfDesc').value = t.description;
+  document.getElementById('dfCost').value = t.cost;
+  document.getElementById('dfWindow').value = t.executionWindow;
+  document.getElementById('dfTerms').value = t.terms;
+  const regionSelect = document.getElementById('dfRegion');
+  for (let i=0;i<regionSelect.options.length;i++) {
+    if (regionSelect.options[i].value===t.region) { regionSelect.selectedIndex=i; break; }
+  }
 }
 
 function submitDealForm(e, editId) {
@@ -544,9 +1211,9 @@ function submitDealForm(e, editId) {
   const executionWindow = document.getElementById('dfWindow').value.trim();
   const terms = document.getElementById('dfTerms').value.trim();
   const region = document.getElementById('dfRegion').value;
-  if (!vendor || !description || !cost || cost <= 0 || !executionWindow) {
+  if (!vendor || !description || !cost || cost<=0 || !executionWindow) {
     const err = document.getElementById('dealFormError');
-    err.textContent = 'Please fill out all required fields with valid values.';
+    err.textContent = 'Please fill all required fields.';
     err.classList.remove('hidden');
     return false;
   }
@@ -557,58 +1224,108 @@ function submitDealForm(e, editId) {
   return false;
 }
 
-// ============================================================
-// NAVIGATION
-// ============================================================
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+  // Close finder dropdown on any modal close
+  S.finderOpen = false;
+}
+
+// ================================================================
+// NAVIGATION & THEME
+// ================================================================
 function handleLogout() {
-  state.currentPartner = null;
-  state.isAuthenticated = false;
-  state.mode = null;
-  state.searchQuery = '';
-  state.sortOption = 'createdAt-desc';
-  state.jamesVendorFilter = 'all';
+  S.currentPartner = null; S.isAuthenticated = false; S.mode = null;
+  S.searchQuery = ''; S.sortOption = 'createdAt-desc';
+  S.vendorFilter = 'all'; S.statusFilter = 'all'; S.regionFilter = 'all';
+  S.viewMode = 'tiles'; S.selectedDeals.clear();
+  S.finderQuery = ''; S.finderResults = null; S.finderOpen = false;
   expandedRows.clear();
   render();
 }
 
-// ============================================================
+function toggleTheme() {
+  S.jamesTheme = S.jamesTheme === 'dark' ? 'light' : 'dark';
+  save(STORE.theme, S.jamesTheme);
+  render();
+}
+
+// ================================================================
 // MAIN RENDER
-// ============================================================
+// ================================================================
 function render() {
   const app = document.getElementById('app');
 
   // Landing page
-  if (!state.currentPartner && !state.isAuthenticated) {
-    document.body.className = 'bg-partner-bg min-h-screen';
-    app.innerHTML = '<div class="min-h-screen bg-partner-bg flex flex-col items-center justify-center p-4">' +
-      '<div class="bg-white/80 backdrop-blur-sm p-8 sm:p-12 rounded-xl shadow-2xl text-center max-w-lg w-full fade-in">' +
-      '<h1 class="text-4xl font-bold text-gray-800 mb-2">MFG Media Deal Hub \uD83E\uDD1D</h1>' +
-      '<p class="text-lg text-gray-600 mb-8">Your central place for managing media partnership deals.</p>' +
-      '<div class="flex flex-col sm:flex-row gap-4 justify-center">' +
-      '<button onclick="showPartnerSelection()" class="bg-partner-primary hover:bg-partner-secondary text-white font-bold py-4 px-8 rounded-lg shadow-lg transition-transform hover:scale-105">Continue as Partner</button>' +
-      '<button onclick="showPasswordModal()" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-4 px-8 rounded-lg shadow-lg transition-transform hover:scale-105">Continue as James</button>' +
-      '</div></div></div>';
+  if (!S.currentPartner && !S.isAuthenticated) {
+    document.body.className = 'bg-gradient-to-br from-slate-100 to-blue-50 min-h-screen font-sans';
+    app.innerHTML = '<div class="min-h-screen flex flex-col items-center justify-center p-4">'+
+      '<div class="bg-white/80 backdrop-blur-md p-6 sm:p-10 rounded-2xl shadow-xl text-center max-w-md w-full fade-in border border-white/50">'+
+      '<div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-5"><span class="text-white text-2xl font-bold">M</span></div>'+
+      '<h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">MFG Media Deal Hub</h1>'+
+      '<p class="text-sm text-gray-500 mb-8">Media partnership deal management platform</p>'+
+      '<div class="flex flex-col gap-3">'+
+      '<button onclick="showPartnerSelection()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 px-6 rounded-xl shadow-sm transition-all active:scale-95 text-sm">Continue as Partner</button>'+
+      '<button onclick="enterJamesMode()" class="bg-gray-800 hover:bg-gray-900 text-white font-semibold py-3.5 px-6 rounded-xl shadow-sm transition-all active:scale-95 text-sm">ENTER JAMES MODE</button>'+
+      '</div></div>'+
+      '<p class="text-xs text-gray-400 mt-6">Media Futures Group</p></div>';
     return;
   }
 
-  const isJames = state.mode === 'james' && state.isAuthenticated;
-  document.body.className = (isJames ? 'bg-james-bg' : 'bg-partner-bg') + ' min-h-screen transition-colors duration-500';
+  const isJames = S.mode === 'james' && S.isAuthenticated;
+  const dark = isJames && S.jamesTheme === 'dark';
 
-  const header = '<header class="p-4 shadow-md bg-white/80 backdrop-blur-sm sticky top-0 z-10">' +
-    '<div class="max-w-7xl mx-auto flex justify-between items-center">' +
-    '<h1 class="text-2xl font-bold text-gray-800">MFG Media Deal Hub \uD83E\uDD1D</h1>' +
-    '<div class="flex items-center space-x-4">' +
-    (isJames ? '<span class="font-semibold text-james-primary">James\' Console</span>' : '') +
-    '<button onclick="handleLogout()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md text-sm transition-colors">' + (state.currentPartner ? 'Switch Partner' : 'Log Out') + '</button>' +
+  document.body.className = (dark ? 'bg-j-bg' : (isJames ? 'bg-jl-bg' : 'bg-slate-50')) + ' min-h-screen font-sans transition-colors duration-300';
+
+  const headerBg = dark ? 'bg-j-card/90 backdrop-blur-md border-b border-gray-700/50' : 'bg-white/90 backdrop-blur-md border-b border-gray-200/50';
+  const headerText = dark ? 'text-j-text' : 'text-gray-800';
+  const headerBtn = dark ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700';
+
+  const header = '<header class="'+headerBg+' sticky top-0 z-10 no-print">'+
+    '<div class="max-w-7xl mx-auto flex items-center justify-between px-3 sm:px-6 py-3">'+
+    '<div class="flex items-center gap-2 sm:gap-3">'+
+    '<div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0"><span class="text-white text-sm font-bold">M</span></div>'+
+    '<span class="font-semibold '+headerText+' text-sm sm:text-base hidden sm:inline">MFG Media Deal Hub</span></div>'+
+    '<div class="flex items-center gap-2">'+
+    (isJames ? '<span class="text-xs font-medium text-emerald-500 hidden sm:inline">James\' Console</span>'+
+      '<button onclick="toggleTheme()" class="p-2 rounded-lg '+headerBtn+' transition-colors text-sm" title="Toggle theme">'+(dark?'☀️':'🌙')+'</button>' : '')+
+    '<button onclick="handleLogout()" class="'+headerBtn+' font-medium py-2 px-3 rounded-lg text-xs transition-colors">'+(S.currentPartner?'Switch':'Log Out')+'</button>'+
     '</div></div></header>';
 
-  app.innerHTML = header + '<main>' + (isJames ? renderJamesMode() : renderPartnerMode()) + '</main>';
+  app.innerHTML = header + '<main>' + (isJames ? renderJamesMode() : renderPartnerMode()) + '</main>' + renderBulkBar();
+
+  // Restore focus on finder input if it was active
+  if (S.finderOpen) {
+    const fi = document.getElementById('finderInput');
+    if (fi) { fi.focus(); fi.selectionStart = fi.selectionEnd = fi.value.length; }
+  }
 }
 
-// ============================================================
+// Close finder on outside click
+document.addEventListener('click', (e) => {
+  if (S.finderOpen && !e.target.closest('#finderInput') && !e.target.closest('.finder-dropdown')) {
+    S.finderOpen = false;
+    render();
+  }
+});
+
+// ================================================================
 // INIT
-// ============================================================
-state.deals = loadDeals();
+// ================================================================
+S.deals = loadDeals();
+S.vendorEmails = load(STORE.emails, ['linkedin-contact@example.com', 'meta-ads@example.com']);
+S.activityLog = load(STORE.activity, []);
+S.savedFilters = load(STORE.filters, []);
+S.jamesTheme = load(STORE.theme, 'dark');
+
+// Auto-detect expired deals
+S.deals.forEach(d => {
+  if (d.status !== 'passed' && d.status !== 'expired' && parseUrgency(d.executionWindow) === 'expired') {
+    d.status = 'expired';
+  }
+});
+save(STORE.deals, S.deals);
+
 render();
 </script>
 </body>
