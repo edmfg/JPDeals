@@ -33,16 +33,20 @@ tailwind.config = {
 <style>
   * { box-sizing: border-box; }
   body { margin: 0; -webkit-text-size-adjust: 100%; }
-  .fade-in { animation: fadeIn .3s ease; }
-  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:.5; } }
-  .card-hover { transition: transform .2s, box-shadow .2s; }
-  @media(hover:hover){ .card-hover:hover { transform:translateY(-2px); box-shadow:0 12px 28px rgba(0,0,0,.12); } }
+  .fade-in { animation: fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+  .card-hover { transition: transform .15s, box-shadow .15s; }
+  @media(hover:hover){ .card-hover:hover { transform:translateY(-1px); box-shadow:0 8px 24px rgba(0,0,0,.06); } }
   button,select,input,textarea { font-size:16px; font-family:inherit; }
   .dark-scroll::-webkit-scrollbar { width:6px; }
   .dark-scroll::-webkit-scrollbar-track { background:#1e293b; }
   .dark-scroll::-webkit-scrollbar-thumb { background:#475569; border-radius:3px; }
   .finder-dropdown { max-height:260px; overflow-y:auto; }
+  .score-ring { width:34px; height:34px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; border-width:3px; border-style:solid; flex-shrink:0; line-height:1; }
+  .bar-fill { height:100%; border-radius:4px; transition:width .5s ease; min-width:2px; }
+  .tab-btn { padding:8px 16px; font-size:13px; font-weight:600; border-bottom:2px solid transparent; transition:all .15s; cursor:pointer; white-space:nowrap; }
+  .tab-btn.active { border-bottom-color:currentColor; }
+  .vendor-stripe { border-left:4px solid var(--vc); }
   @media print {
     .no-print { display:none !important; }
     body { background:#fff !important; color:#000 !important; }
@@ -56,7 +60,7 @@ tailwind.config = {
 // ================================================================
 // CONFIGURATION
 // ================================================================
-const STORE = { deals:'mfg_deals', emails:'mfg_emails', activity:'mfg_activity', filters:'mfg_filters', theme:'mfg_theme', gemKey:'geminiApiKey' };
+const STORE = { deals:'mfg_deals', emails:'mfg_emails', activity:'mfg_activity', filters:'mfg_filters', theme:'mfg_theme' };
 
 const VENDOR_COLORS = {
   LinkedIn:'#0A66C2', TikTok:'#ff0050', Meta:'#0668E1', Google:'#4285F4',
@@ -74,13 +78,7 @@ const STATUS = {
   expired:  { label:'Expired',   bg:'bg-red-100 text-red-700',       dbg:'bg-red-900/40 text-red-300',       icon:'⊘' },
 };
 
-const STATUS_FLOW = {
-  new: ['reviewing','approved','passed'],
-  reviewing: ['approved','passed'],
-  approved: [],
-  passed: ['reviewing'],
-  expired: [],
-};
+const STATUS_FLOW = { new:['reviewing','approved','passed'], reviewing:['approved','passed'], approved:[], passed:['reviewing'], expired:[] };
 
 const TEMPLATES = [
   { name:'Social Media Campaign', description:'Multi-platform social media campaign with sponsored posts, stories, and creator partnerships targeting key demographics.', cost:75000, executionWindow:'Q3 2026', terms:'Creative approval required. A/B testing included.', region:'NA' },
@@ -91,39 +89,48 @@ const TEMPLATES = [
 ];
 
 const FINDER_HINTS = [
-  'Show me the best deals right now',
-  'What deals are expiring soon?',
-  'Find deals under $100K',
-  'Show high-value deals over $200K',
-  'Compare social media platform deals',
-  'What new deals need review?',
-  'Show all approved deals',
-  'Find deals in North America',
-  'Show EMEA region opportunities',
-  'APAC market deals',
-  'Global campaign options',
-  'Cheapest deals available',
-  'Show LinkedIn deals',
-  'Show TikTok opportunities',
-  'Show Meta deals',
-  'Show Google deals',
+  'Show me the best deals right now','What deals are expiring soon?','Find deals under $100K',
+  'Show high-value deals over $200K','Compare social media platform deals','What new deals need review?',
+  'Show all approved deals','Find deals in North America','Show EMEA region opportunities',
+  'APAC market deals','Global campaign options','Cheapest deals available',
+  'Show LinkedIn deals','Show TikTok opportunities','Show Meta deals','Show Google deals',
   'What deals are under review?',
 ];
+
+// NEW: Quarterly budgets
+const BUDGETS = { 'Q1 2026':500000, 'Q2 2026':750000, 'Q3 2026':1000000, 'Q4 2026':800000 };
+
+// NEW: Industry benchmarks by category
+const BENCHMARKS = {
+  'Social Media':      { avgDealSize:85000,  avgCPM:12, vendors:['LinkedIn','TikTok','Meta','Twitter/X','Snapchat','Pinterest','Reddit'] },
+  'Video & Streaming': { avgDealSize:160000, avgCPM:25, vendors:['YouTube','Twitch','Netflix','Hulu','Disney+'] },
+  'Search & Display':  { avgDealSize:95000,  avgCPM:8,  vendors:['Google','Microsoft'] },
+  'Audio':             { avgDealSize:130000, avgCPM:18, vendors:['Spotify'] },
+  'Publishing':        { avgDealSize:145000, avgCPM:30, vendors:['The New York Times','Apple'] },
+  'Retail Media':      { avgDealSize:155000, avgCPM:15, vendors:['Walmart','Amazon'] },
+};
+
+// NEW: Vendor tier rankings (1=premium, 2=strong, 3=emerging)
+const VENDOR_TIERS = {
+  Google:1,Meta:1,Amazon:1,Apple:1,Microsoft:1,LinkedIn:1,TikTok:1,Netflix:1,'Disney+':1,
+  YouTube:2,Spotify:2,Snapchat:2,'The New York Times':2,Pinterest:2,Twitch:2,Hulu:2,Walmart:2,
+  Reddit:3,'Twitter/X':3,
+};
 
 // ================================================================
 // INITIAL DEALS
 // ================================================================
 const initialDeals = [
-  { id:1, vendor:'LinkedIn', description:'Homepage takeover for 24 hours, targeting tech professionals. Includes 3 sponsored InMail blasts and analytics dashboard.', cost:75000, terms:'Valid for Q2 bookings only. 10% discount if booked this week.', executionWindow:'Q2 2026', createdAt:'2026-01-15T10:00:00Z', region:'NA', status:'approved', notes:[{text:'Strong performance history with LinkedIn.',ts:'2026-01-20T09:00:00Z'}] },
-  { id:2, vendor:'TikTok', description:'Brand challenge with 3 top creators in the finance niche. Guaranteed 5M views with engagement tracking.', cost:120000, terms:'Creator approval required. Payment 50% upfront.', executionWindow:'June 2026', createdAt:'2026-01-28T14:30:00Z', region:'APAC', status:'reviewing', notes:[] },
+  { id:1, vendor:'LinkedIn', description:'Homepage takeover for 24 hours, targeting tech professionals. Includes 3 sponsored InMail blasts and analytics dashboard.', cost:75000, terms:'Valid for Q2 bookings only. 10% discount if booked this week.', executionWindow:'Q2 2026', createdAt:'2026-01-15T10:00:00Z', region:'NA', status:'approved', notes:[{text:'Strong performance history with LinkedIn.',ts:'2026-01-20T09:00:00Z'}], negotiations:[{cost:85000,date:'2026-01-10',note:'Initial quote'},{cost:75000,date:'2026-01-15',note:'Negotiated 12% discount for Q2 commitment'}] },
+  { id:2, vendor:'TikTok', description:'Brand challenge with 3 top creators in the finance niche. Guaranteed 5M views with engagement tracking.', cost:120000, terms:'Creator approval required. Payment 50% upfront.', executionWindow:'June 2026', createdAt:'2026-01-28T14:30:00Z', region:'APAC', status:'reviewing', notes:[], negotiations:[{cost:145000,date:'2026-01-20',note:'Initial offer'},{cost:135000,date:'2026-01-25',note:'Volume discount applied'},{cost:120000,date:'2026-01-28',note:'Final rate with Q2 commitment'}] },
   { id:3, vendor:'Meta', description:'Instagram Reels campaign featuring 5 influencers and a custom AR filter. Boosted posts targeting 18-34 in North America.', cost:95000, terms:'AR filter dev time is 2 weeks extra. All content requires brand approval.', executionWindow:'Q3 2026', createdAt:'2026-01-20T09:00:00Z', region:'NA', status:'new', notes:[] },
   { id:4, vendor:'Google', description:'YouTube pre-roll & in-stream video ads on gaming and esports channels. Guaranteed 1M impressions with frequency capping.', cost:60000, terms:'Video creative must be provided in 3 formats (15s, 30s, 60s).', executionWindow:'May 2026', createdAt:'2026-01-10T11:20:00Z', region:'Global', status:'approved', notes:[{text:'Already have creative assets ready.',ts:'2026-01-15T14:00:00Z'}] },
   { id:5, vendor:'Reddit', description:'Sponsored AMA on r/technology with the CTO. Promoted posts in 5 related subreddits for one week.', cost:40000, terms:'AMA topic and guest must be approved by subreddit moderators.', executionWindow:'April 2026', createdAt:'2026-02-01T16:45:00Z', region:'NA', status:'new', notes:[] },
   { id:6, vendor:'Spotify', description:'Audio ad campaign targeting Focus and Workout playlists. Companion display banner on Now Playing screen.', cost:55000, terms:'Audio spot production not included. 30-second max.', executionWindow:'Q3 2026', createdAt:'2026-01-22T13:00:00Z', region:'EMEA', status:'new', notes:[] },
-  { id:7, vendor:'The New York Times', description:'Sponsored content: one feature article on T Brand Studio and two newsletter placements in DealBook.', cost:150000, terms:'Editorial team has final say. Four-week lead time required.', executionWindow:'July 2026', createdAt:'2026-01-05T10:15:00Z', region:'NA', status:'reviewing', notes:[{text:'High CPM but excellent brand safety.',ts:'2026-01-10T11:00:00Z'}] },
+  { id:7, vendor:'The New York Times', description:'Sponsored content: one feature article on T Brand Studio and two newsletter placements in DealBook.', cost:150000, terms:'Editorial team has final say. Four-week lead time required.', executionWindow:'July 2026', createdAt:'2026-01-05T10:15:00Z', region:'NA', status:'reviewing', notes:[{text:'High CPM but excellent brand safety.',ts:'2026-01-10T11:00:00Z'}], negotiations:[{cost:175000,date:'2025-12-20',note:'Rate card price'},{cost:150000,date:'2026-01-05',note:'Long-term partnership discount'}] },
   { id:8, vendor:'Twitch', description:'Homepage Top Carousel placement for 3 days plus sponsorship of a top 10 streamer for a 4-hour session.', cost:85000, terms:'Streamer must genuinely like the product. No script reading.', executionWindow:'August 2026', createdAt:'2026-02-05T18:00:00Z', region:'Global', status:'new', notes:[] },
   { id:9, vendor:'Pinterest', description:'Promoted Pins campaign for home decor product line. Idea Pins and dedicated shopping section included.', cost:45000, terms:'Requires high-quality vertical imagery. Min ad spend commitment.', executionWindow:'May 2026', createdAt:'2026-01-18T09:30:00Z', region:'NA', status:'approved', notes:[] },
-  { id:10, vendor:'Snapchat', description:'National sponsored lens for Summer weekend. Includes analytics on shares, views, and engagement metrics.', cost:250000, terms:'Creative concept due 6 weeks prior. Subject to Snap creative approval.', executionWindow:'June 2026', createdAt:'2026-02-10T12:00:00Z', region:'NA', status:'reviewing', notes:[] },
+  { id:10, vendor:'Snapchat', description:'National sponsored lens for Summer weekend. Includes analytics on shares, views, and engagement metrics.', cost:250000, terms:'Creative concept due 6 weeks prior. Subject to Snap creative approval.', executionWindow:'June 2026', createdAt:'2026-02-10T12:00:00Z', region:'NA', status:'reviewing', notes:[], negotiations:[{cost:300000,date:'2026-02-01',note:'Initial quote for national lens'},{cost:275000,date:'2026-02-05',note:'Removed weekend premium'},{cost:250000,date:'2026-02-10',note:'Final with multi-market bundle'}] },
   { id:11, vendor:'Amazon', description:'Twitch Prime homepage banner for one week during Prime Day. Targeted at Prime members with retargeting.', cost:180000, terms:'Requires approval from both Amazon Ads and Twitch teams.', executionWindow:'July 2026', createdAt:'2026-02-15T11:00:00Z', region:'Global', status:'new', notes:[] },
   { id:12, vendor:'Amazon', description:'Sponsored product placement in Movers & Shakers section for 48 hours. Category: Electronics.', cost:65000, terms:'Product must have at least a 4-star rating.', executionWindow:'Q2 2026', createdAt:'2026-02-18T15:00:00Z', region:'NA', status:'new', notes:[] },
   { id:13, vendor:'Google', description:'Google Search top-of-page keyword campaign for "best productivity tools". Guaranteed 500k impressions.', cost:80000, terms:'Ad copy subject to Google Ads policy review.', executionWindow:'May 2026', createdAt:'2026-02-20T09:30:00Z', region:'EMEA', status:'new', notes:[] },
@@ -138,7 +145,7 @@ const initialDeals = [
   { id:22, vendor:'Twitch', description:'Sponsorship of /twitchgaming weekly recap show for one month. Logo placement + 30s video spot per show.', cost:95000, terms:'4 shows included. Additional shows at $20k each.', executionWindow:'June 2026', createdAt:'2026-03-02T18:00:00Z', region:'Global', status:'new', notes:[] },
   { id:23, vendor:'YouTube', description:'Creator collaboration series: 5 dedicated videos with top tech YouTubers. Full production support.', cost:225000, terms:'Creator selection requires brand approval. 6-week production timeline.', executionWindow:'Q3 2026', createdAt:'2026-03-01T10:00:00Z', region:'NA', status:'new', notes:[] },
   { id:24, vendor:'Twitter/X', description:'Promoted trending topic for 24 hours during major tech conference. Includes timeline ads.', cost:130000, terms:'Topic must comply with X advertising policies. Real-time monitoring required.', executionWindow:'May 2026', createdAt:'2026-02-20T14:00:00Z', region:'Global', status:'new', notes:[] },
-  { id:25, vendor:'Netflix', description:'Brand integration opportunity in upcoming original series. Product placement in 3 episodes.', cost:350000, terms:'Subject to Netflix creative team approval. 3-month lead time.', executionWindow:'Q4 2026', createdAt:'2026-03-01T16:00:00Z', region:'NA', status:'reviewing', notes:[{text:'Premium opportunity but high cost. Need exec approval.',ts:'2026-03-02T10:00:00Z'}] },
+  { id:25, vendor:'Netflix', description:'Brand integration opportunity in upcoming original series. Product placement in 3 episodes.', cost:350000, terms:'Subject to Netflix creative team approval. 3-month lead time.', executionWindow:'Q4 2026', createdAt:'2026-03-01T16:00:00Z', region:'NA', status:'reviewing', notes:[{text:'Premium opportunity but high cost. Need exec approval.',ts:'2026-03-02T10:00:00Z'}], negotiations:[{cost:400000,date:'2026-02-20',note:'Rate card for 3-episode integration'},{cost:375000,date:'2026-02-28',note:'Reduced to 2 episodes + bonus social'},{cost:350000,date:'2026-03-01',note:'Current offer pending approval'}] },
   { id:26, vendor:'Hulu', description:'Pre-roll ad campaign during premium content. 15-second spots with frequency capping at 3x/user/week.', cost:88000, terms:'Creative must be submitted 2 weeks prior to launch.', executionWindow:'June 2026', createdAt:'2026-02-25T11:00:00Z', region:'NA', status:'new', notes:[] },
   { id:27, vendor:'Apple', description:'App Store featured placement for one week. Includes Today tab story and editorial spotlight.', cost:200000, terms:'App must meet Apple quality guidelines. No guaranteed download numbers.', executionWindow:'Q3 2026', createdAt:'2026-03-01T08:00:00Z', region:'Global', status:'new', notes:[] },
   { id:28, vendor:'Microsoft', description:'LinkedIn + Bing Search bundle: InMail campaign paired with search ads for B2B SaaS targeting.', cost:145000, terms:'Combined reporting dashboard. Min 60-day commitment.', executionWindow:'May-June 2026', createdAt:'2026-02-28T10:00:00Z', region:'NA', status:'new', notes:[] },
@@ -155,6 +162,7 @@ const initialDeals = [
 const majorPartners = ['Amazon','Apple','Disney+','Google','Hulu','LinkedIn','Meta','Microsoft','Netflix','Pinterest','Reddit','Snapchat','Spotify','The New York Times','TikTok','Twitch','Twitter/X','Walmart','YouTube'];
 const regions = ['Global','NA','EMEA','APAC'];
 const sortOptions = [
+  {v:'score-desc',l:'Score: High → Low'},{v:'score-asc',l:'Score: Low → High'},
   {v:'createdAt-desc',l:'Newest First'},{v:'createdAt-asc',l:'Oldest First'},
   {v:'cost-asc',l:'Cost: Low → High'},{v:'cost-desc',l:'Cost: High → Low'},
   {v:'vendor-asc',l:'Vendor A-Z'},{v:'vendor-desc',l:'Vendor Z-A'},
@@ -171,6 +179,7 @@ let S = {
   vendorEmails: [], selectedDeals: new Set(), jamesTheme: 'dark',
   savedFilters: [], activityLog: [],
   finderQuery: '', finderResults: null, finderOpen: false, finderCollapsed: false,
+  jamesTab: 'deals',
 };
 let expandedRows = new Set();
 
@@ -185,11 +194,7 @@ function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); 
 
 function loadDeals() {
   const d = load(STORE.deals, initialDeals);
-  return d.map(deal => ({
-    ...deal,
-    status: deal.status || 'new',
-    notes: deal.notes || [],
-  }));
+  return d.map(deal => ({ ...deal, status: deal.status || 'new', notes: deal.notes || [], negotiations: deal.negotiations || [] }));
 }
 
 // ================================================================
@@ -201,11 +206,10 @@ function esc(s) {
   d.textContent = String(s);
   return d.innerHTML;
 }
-function escAttr(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;');
-}
+function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
 function fmtDate(d) { return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
 function fmtMoney(n) { return '$'+Number(n).toLocaleString(); }
+function fmtMoneyK(n) { return n >= 1000000 ? '$'+(n/1000000).toFixed(1)+'M' : n >= 1000 ? '$'+Math.round(n/1000)+'K' : '$'+n; }
 
 function timeAgo(ts) {
   const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
@@ -229,7 +233,6 @@ function parseUrgency(w) {
       if (wl.includes(mos[i])) { const ym = w.match(/(\d{4})/); if(ym) end = new Date(+ym[1],i+1,0); break; }
     }
   }
-  if (!end && /holiday|season/i.test(w)) { const ym = w.match(/(\d{4})/); if(ym) end = new Date(+ym[1],11,31); }
   if (!end) return 'normal';
   const days = (end - now) / 864e5;
   if (days < -7) return 'expired';
@@ -248,18 +251,18 @@ function urgencyBadge(w, dark) {
   };
   const c = cfg[u];
   if (!c.label) return '';
-  return '<span class="text-xs font-semibold px-2 py-0.5 rounded-full '+c.cls+'">'+c.label+'</span>';
+  return '<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full '+c.cls+'">'+c.label+'</span>';
 }
 
 function vendorDot(vendor) {
   const c = VENDOR_COLORS[vendor] || '#6b7280';
-  return '<span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:'+c+'"></span>';
+  return '<span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background:'+c+'"></span>';
 }
 
 function statusBadge(status, dark) {
   const s = STATUS[status] || STATUS.new;
   const cls = dark ? s.dbg : s.bg;
-  return '<span class="text-xs font-semibold px-2 py-0.5 rounded-full '+cls+'">'+s.icon+' '+s.label+'</span>';
+  return '<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full '+cls+'">'+s.icon+' '+s.label+'</span>';
 }
 
 function renderMarkdown(text) {
@@ -268,6 +271,93 @@ function renderMarkdown(text) {
     .replace(/\*(.*?)\*/g,'<em>$1</em>')
     .replace(/^- (.*)/gm,'<li class="ml-4 list-disc">$1</li>')
     .replace(/\n/g,'<br>');
+}
+
+// ================================================================
+// SCORING, BENCHMARKS, DUPLICATES
+// ================================================================
+function benchmarkFor(vendor) {
+  for (const [cat, data] of Object.entries(BENCHMARKS)) {
+    if (data.vendors.includes(vendor)) return { category: cat, ...data };
+  }
+  return null;
+}
+
+function calcDealScore(deal) {
+  let score = 50;
+  const bench = benchmarkFor(deal.vendor);
+  if (bench) {
+    const diff = (bench.avgDealSize - deal.cost) / bench.avgDealSize;
+    score += Math.round(Math.max(-20, Math.min(20, diff * 40)));
+  }
+  const u = parseUrgency(deal.executionWindow);
+  if (u === 'urgent') score += 8;
+  else if (u === 'soon') score += 4;
+  else if (u === 'expired') score -= 15;
+  if (deal.status === 'approved') score += 10;
+  else if (deal.status === 'reviewing') score += 3;
+  else if (deal.status === 'passed') score -= 10;
+  const tier = VENDOR_TIERS[deal.vendor];
+  if (tier === 1) score += 8;
+  else if (tier === 2) score += 4;
+  if (deal.negotiations && deal.negotiations.length > 1) {
+    const first = deal.negotiations[0].cost;
+    if (deal.cost < first) score += Math.min(5, Math.round((first - deal.cost) / first * 20));
+  }
+  return Math.max(0, Math.min(100, score));
+}
+
+function scoreColor(score) {
+  if (score >= 70) return { border:'border-emerald-500', text:'text-emerald-600', dtxt:'text-emerald-400', dborder:'border-emerald-400', bg:'bg-emerald-50', dbg:'bg-emerald-900/30' };
+  if (score >= 45) return { border:'border-amber-500', text:'text-amber-600', dtxt:'text-amber-400', dborder:'border-amber-400', bg:'bg-amber-50', dbg:'bg-amber-900/30' };
+  return { border:'border-red-500', text:'text-red-600', dtxt:'text-red-400', dborder:'border-red-400', bg:'bg-red-50', dbg:'bg-red-900/30' };
+}
+
+function scoreBadge(deal, dark) {
+  const score = calcDealScore(deal);
+  const c = scoreColor(score);
+  const borderCls = dark ? c.dborder : c.border;
+  const textCls = dark ? c.dtxt : c.text;
+  return '<span class="score-ring '+borderCls+' '+textCls+'">'+score+'</span>';
+}
+
+function findDuplicates(deal) {
+  return S.deals.filter(d =>
+    d.id !== deal.id && d.vendor === deal.vendor &&
+    Math.abs(d.cost - deal.cost) / Math.max(deal.cost, 1) < 0.35 &&
+    getDealQuarter(d) === getDealQuarter(deal)
+  );
+}
+
+function getDealQuarter(deal) {
+  const w = deal.executionWindow;
+  const qm = w.match(/Q(\d)\s+(\d{4})/i);
+  if (qm) return 'Q'+qm[1]+' '+qm[2];
+  const mos = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const wl = w.toLowerCase();
+  for (let i=0;i<12;i++) {
+    if (wl.includes(mos[i])) {
+      const ym = w.match(/(\d{4})/);
+      if (ym) return 'Q'+Math.ceil((i+1)/3)+' '+ym[1];
+    }
+  }
+  return 'Other';
+}
+
+function benchmarkDiff(deal) {
+  const b = benchmarkFor(deal.vendor);
+  if (!b) return null;
+  const diff = ((deal.cost - b.avgDealSize) / b.avgDealSize * 100).toFixed(0);
+  return { category: b.category, avgDealSize: b.avgDealSize, avgCPM: b.avgCPM, diffPct: +diff };
+}
+
+function barHTML(label, value, max, color, dark, displayVal) {
+  const pct = max > 0 ? Math.min(100, Math.round(value / max * 100)) : 0;
+  return '<div class="flex items-center gap-2 mb-2">'+
+    '<div class="w-24 sm:w-28 text-[11px] text-right font-medium '+(dark?'text-gray-400':'text-gray-500')+' truncate">'+label+'</div>'+
+    '<div class="flex-1 h-5 '+(dark?'bg-gray-800':'bg-gray-100')+' rounded overflow-hidden">'+
+    '<div class="bar-fill '+color+'" style="width:'+pct+'%"></div></div>'+
+    '<div class="w-16 sm:w-20 text-[11px] font-semibold '+(dark?'text-gray-300':'text-gray-700')+' text-right">'+(displayVal||fmtMoneyK(value))+'</div></div>';
 }
 
 // ================================================================
@@ -300,6 +390,7 @@ function getFilteredDeals() {
   deals.sort((a,b) => {
     let c = 0;
     if (key==='cost') c = a.cost - b.cost;
+    else if (key==='score') c = calcDealScore(a) - calcDealScore(b);
     else if (key==='createdAt') c = new Date(a.createdAt) - new Date(b.createdAt);
     else c = String(a[key]||'').localeCompare(String(b[key]||''));
     return dir==='desc' ? -c : c;
@@ -312,10 +403,10 @@ function getUniqueVendors() {
 }
 
 // ================================================================
-// DEAL CRUD + STATUS + NOTES
+// DEAL CRUD + STATUS + NOTES + NEGOTIATIONS
 // ================================================================
 function addDeal(data) {
-  const deal = { ...data, id:Date.now(), createdAt:new Date().toISOString(), status:'new', notes:[] };
+  const deal = { ...data, id:Date.now(), createdAt:new Date().toISOString(), status:'new', notes:[], negotiations:[] };
   S.deals.push(deal);
   save(STORE.deals, S.deals);
   logActivity('added', deal.vendor, fmtMoney(deal.cost)+' — '+deal.description.substring(0,60));
@@ -356,6 +447,22 @@ function addNote(id) {
   deal.notes.push({ text: input.value.trim(), ts: new Date().toISOString() });
   save(STORE.deals, S.deals);
   logActivity('note', deal.vendor, 'Note added');
+  render();
+}
+
+function addNegotiation(id) {
+  const costInput = document.getElementById('negCost-'+id);
+  const noteInput = document.getElementById('negNote-'+id);
+  if (!costInput || !costInput.value) return;
+  const deal = S.deals.find(d=>d.id===id);
+  if (!deal) return;
+  const newCost = Number(costInput.value);
+  if (newCost <= 0) return;
+  if (!deal.negotiations) deal.negotiations = [];
+  deal.negotiations.push({ cost: newCost, date: new Date().toISOString().split('T')[0], note: noteInput ? noteInput.value.trim() : '' });
+  deal.cost = newCost;
+  save(STORE.deals, S.deals);
+  logActivity('negotiation', deal.vendor, 'Price updated to '+fmtMoney(newCost));
   render();
 }
 
@@ -412,25 +519,28 @@ function simulateGeminiEval(dealId) {
 
   setTimeout(() => {
     const dark = isDark();
-    const cpm = (deal.cost / 1000).toFixed(0);
     const isHigh = deal.cost > 150000;
     const isLow = deal.cost < 60000;
     const urgency = parseUrgency(deal.executionWindow);
+    const score = calcDealScore(deal);
+    const bench = benchmarkDiff(deal);
 
-    let analysis = '**Gemini Analysis: '+deal.vendor+' — '+fmtMoney(deal.cost)+'**\n\n';
+    let analysis = '**Gemini Analysis: '+deal.vendor+' — '+fmtMoney(deal.cost)+' (Score: '+score+'/100)**\n\n';
     analysis += '**Pros:**\n';
     analysis += '- '+deal.vendor+' has strong audience reach in '+deal.region+' market\n';
     if (isLow) analysis += '- Competitive pricing below market average\n';
+    if (bench && bench.diffPct < 0) analysis += '- '+Math.abs(bench.diffPct)+'% below '+bench.category+' benchmark\n';
     if (deal.description.toLowerCase().includes('creator')) analysis += '- Creator partnerships drive authentic engagement\n';
     if (deal.description.toLowerCase().includes('guaranteed')) analysis += '- Performance guarantees reduce risk\n';
-    analysis += '- Execution window ('+deal.executionWindow+') aligns with campaign calendar\n';
     analysis += '\n**Cons:**\n';
     if (isHigh) analysis += '- Premium pricing — ensure ROI justifies the '+fmtMoney(deal.cost)+' investment\n';
+    if (bench && bench.diffPct > 20) analysis += '- '+bench.diffPct+'% above '+bench.category+' avg deal size\n';
     if (deal.terms) analysis += '- Terms require attention: '+deal.terms.substring(0,80)+'\n';
     if (urgency === 'urgent') analysis += '- Tight timeline — act quickly or window closes\n';
     if (urgency === 'expired') analysis += '- Execution window has passed — renegotiate dates\n';
     analysis += '\n**Recommendation:** ';
     if (deal.status === 'approved') analysis += 'Already approved. Good to proceed with execution planning.';
+    else if (score >= 70) analysis += 'Strong score ('+score+'). Recommend **approving** promptly.';
     else if (isLow) analysis += 'Strong value play. Recommend **approving** for the '+deal.region+' market.';
     else if (isHigh) analysis += 'High investment. Recommend **further negotiation** on terms before committing.';
     else analysis += 'Solid opportunity. Recommend moving to **review** with the team.';
@@ -447,7 +557,6 @@ function getFinderSuggestions(query) {
   if (!query) return FINDER_HINTS.slice(0,8);
   const q = query.toLowerCase();
   const matches = FINDER_HINTS.filter(h => h.toLowerCase().includes(q));
-  // Add dynamic vendor suggestions
   const vendors = getUniqueVendors().filter(v => v!=='all' && v.toLowerCase().includes(q));
   vendors.forEach(v => { if (!matches.some(m=>m.toLowerCase().includes(v.toLowerCase()))) matches.push('Show '+v+' deals'); });
   return matches.slice(0,8);
@@ -458,57 +567,45 @@ function runFinder(query) {
   const q = query.toLowerCase();
   let deals = [...S.deals];
   let description = '';
-
-  // Parse vendor
   const allVendors = Array.from(new Set(S.deals.map(d=>d.vendor)));
   const matchedVendor = allVendors.find(v => q.includes(v.toLowerCase()));
   if (matchedVendor) { deals = deals.filter(d=>d.vendor===matchedVendor); description += matchedVendor+' deals'; }
-
-  // Parse cost
   const underMatch = q.match(/under\s*\$?([\d,]+)\s*k?/i);
   if (underMatch) { const max = +underMatch[1].replace(/,/g,'')*(/k/i.test(underMatch[0])?1000:underMatch[1].length<=3?1000:1); deals = deals.filter(d=>d.cost<=max); description += (description?' | ':'')+'under '+fmtMoney(max); }
   const overMatch = q.match(/over\s*\$?([\d,]+)\s*k?/i);
   if (overMatch) { const min = +overMatch[1].replace(/,/g,'')*(/k/i.test(overMatch[0])?1000:overMatch[1].length<=3?1000:1); deals = deals.filter(d=>d.cost>=min); description += (description?' | ':'')+'over '+fmtMoney(min); }
-
-  // Parse region
   if (q.includes('north america') || /\bna\b/.test(q)) { deals = deals.filter(d=>d.region==='NA'); description += (description?' | ':'')+'NA region'; }
   else if (q.includes('emea') || q.includes('europe')) { deals = deals.filter(d=>d.region==='EMEA'); description += (description?' | ':'')+'EMEA region'; }
   else if (q.includes('apac') || q.includes('asia')) { deals = deals.filter(d=>d.region==='APAC'); description += (description?' | ':'')+'APAC region'; }
   else if (q.includes('global')) { deals = deals.filter(d=>d.region==='Global'); description += (description?' | ':'')+'Global'; }
-
-  // Parse status
   if (q.includes('approved')) { deals = deals.filter(d=>d.status==='approved'); description += (description?' | ':'')+'Approved'; }
   else if (q.includes('review') || q.includes('new')) { deals = deals.filter(d=>d.status==='new'||d.status==='reviewing'); description += (description?' | ':'')+'Needs review'; }
-
-  // Parse urgency
   if (q.includes('expir') || q.includes('urgent') || q.includes('soon')) {
     deals = deals.filter(d => { const u=parseUrgency(d.executionWindow); return u==='urgent'||u==='soon'; });
     description += (description?' | ':'')+'Expiring soon';
   }
-
-  // Sort
   if (q.includes('cheap') || q.includes('low cost') || q.includes('affordable')) deals.sort((a,b)=>a.cost-b.cost);
-  else if (q.includes('best') || q.includes('top') || q.includes('high value') || q.includes('premium')) deals.sort((a,b)=>b.cost-a.cost);
+  else if (q.includes('best') || q.includes('top') || q.includes('high value') || q.includes('premium')) deals.sort((a,b)=>calcDealScore(b)-calcDealScore(a));
   else deals.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
 
   const total = deals.reduce((s,d)=>s+d.cost,0);
   const avg = deals.length ? Math.round(total/deals.length) : 0;
-
   let analysis;
-  if (deals.length === 0) {
-    analysis = 'No deals match your query. Try broadening your search criteria.';
-  } else {
+  if (deals.length === 0) { analysis = 'No deals match your query. Try broadening your search criteria.'; }
+  else {
+    const avgScore = deals.length ? Math.round(deals.reduce((s,d) => s + calcDealScore(d), 0) / deals.length) : 0;
     analysis = 'Found **'+deals.length+' deals** matching: '+description+'.\n\n'+
       '- **Total pipeline value:** '+fmtMoney(total)+'\n'+
       '- **Average deal size:** '+fmtMoney(avg)+'\n'+
+      '- **Average score:** '+avgScore+'/100\n'+
       '- **Cost range:** '+fmtMoney(Math.min(...deals.map(d=>d.cost)))+' — '+fmtMoney(Math.max(...deals.map(d=>d.cost)))+'\n';
     if (deals.length <= 5) {
       analysis += '\n**Top picks:**\n';
-      deals.forEach(d => { analysis += '- **'+d.vendor+'** ('+fmtMoney(d.cost)+') — '+d.description.substring(0,80)+'...\n'; });
+      deals.forEach(d => { analysis += '- **'+d.vendor+'** ('+fmtMoney(d.cost)+', Score: '+calcDealScore(d)+') — '+d.description.substring(0,80)+'...\n'; });
     } else {
-      analysis += '\n**Top 3 by value:**\n';
-      [...deals].sort((a,b)=>b.cost-a.cost).slice(0,3).forEach(d => {
-        analysis += '- **'+d.vendor+'** ('+fmtMoney(d.cost)+') — '+d.description.substring(0,80)+'...\n';
+      analysis += '\n**Top 3 by score:**\n';
+      [...deals].sort((a,b)=>calcDealScore(b)-calcDealScore(a)).slice(0,3).forEach(d => {
+        analysis += '- **'+d.vendor+'** ('+fmtMoney(d.cost)+', Score: '+calcDealScore(d)+') — '+d.description.substring(0,80)+'...\n';
       });
     }
     const approved = deals.filter(d=>d.status==='approved').length;
@@ -516,7 +613,6 @@ function runFinder(query) {
     if (approved) analysis += '\n✓ '+approved+' already approved.';
     if (newDeals) analysis += '\n● '+newDeals+' awaiting review.';
   }
-
   S.finderResults = { query, analysis, deals, description };
   S.finderOpen = false;
   render();
@@ -524,10 +620,7 @@ function runFinder(query) {
 
 function selectFinderSuggestion(idx) {
   const suggestions = getFinderSuggestions(S.finderQuery);
-  if (suggestions[idx]) {
-    S.finderQuery = suggestions[idx];
-    runFinder(S.finderQuery);
-  }
+  if (suggestions[idx]) { S.finderQuery = suggestions[idx]; runFinder(S.finderQuery); }
 }
 
 // ================================================================
@@ -535,15 +628,14 @@ function selectFinderSuggestion(idx) {
 // ================================================================
 function exportCSV() {
   const deals = getFilteredDeals();
-  const header = 'Vendor,Description,Cost,Region,Execution Window,Status,Terms,Created';
+  const header = 'Vendor,Description,Cost,Region,Execution Window,Status,Score,Terms,Created';
   const rows = deals.map(d =>
-    [d.vendor, '"'+d.description.replace(/"/g,'""')+'"', d.cost, d.region, d.executionWindow, d.status, '"'+(d.terms||'').replace(/"/g,'""')+'"', d.createdAt].join(',')
+    [d.vendor, '"'+d.description.replace(/"/g,'""')+'"', d.cost, d.region, d.executionWindow, d.status, calcDealScore(d), '"'+(d.terms||'').replace(/"/g,'""')+'"', d.createdAt].join(',')
   );
   const csv = header+'\n'+rows.join('\n');
   const blob = new Blob([csv], {type:'text/csv'});
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'mfg-deals-export.csv'; a.click();
+  const a = document.createElement('a'); a.href = url; a.download = 'mfg-deals-export.csv'; a.click();
   URL.revokeObjectURL(url);
   logActivity('export', S.deals.length+' deals', 'CSV export');
 }
@@ -554,10 +646,7 @@ function exportCSV() {
 function saveCurrentFilter() {
   const name = prompt('Name this filter:');
   if (!name) return;
-  S.savedFilters.push({
-    name, searchQuery:S.searchQuery, sortOption:S.sortOption,
-    vendorFilter:S.vendorFilter, statusFilter:S.statusFilter, regionFilter:S.regionFilter
-  });
+  S.savedFilters.push({ name, searchQuery:S.searchQuery, sortOption:S.sortOption, vendorFilter:S.vendorFilter, statusFilter:S.statusFilter, regionFilter:S.regionFilter });
   save(STORE.filters, S.savedFilters);
   render();
 }
@@ -591,11 +680,12 @@ function showCompare() {
   const rows = [
     ['Vendor', d => vendorDot(d.vendor)+' '+esc(d.vendor)],
     ['Cost', d => '<span class="font-bold '+(dark?'text-emerald-400':'text-emerald-600')+'">'+fmtMoney(d.cost)+'</span>'],
+    ['Score', d => scoreBadge(d, dark)],
     ['Region', d => esc(d.region)],
     ['Window', d => esc(d.executionWindow)+' '+urgencyBadge(d.executionWindow, dark)],
     ['Status', d => statusBadge(d.status, dark)],
-    ['Description', d => '<span class="text-sm">'+esc(d.description.substring(0,120))+'...</span>'],
-    ['Terms', d => '<span class="text-sm italic">'+(d.terms?esc(d.terms.substring(0,100))+'...':'—')+'</span>'],
+    ['Benchmark', d => { const b = benchmarkDiff(d); return b ? (b.diffPct > 0 ? '<span class="text-red-500">+'+b.diffPct+'%</span>' : '<span class="text-emerald-500">'+b.diffPct+'%</span>')+' vs avg' : '—'; }],
+    ['Description', d => '<span class="text-xs">'+esc(d.description.substring(0,100))+'...</span>'],
     ['Submitted', d => fmtDate(d.createdAt)],
   ];
 
@@ -604,13 +694,13 @@ function showCompare() {
   el.className = 'fixed inset-0 '+bg+' backdrop-blur-sm flex items-start justify-center z-50 p-3 sm:p-6 overflow-y-auto fade-in';
   el.innerHTML = '<div class="'+card+' rounded-xl border shadow-2xl w-full max-w-5xl my-4 sm:my-8">'+
     '<div class="flex justify-between items-center p-4 sm:p-6 border-b '+(dark?'border-gray-700':'border-gray-200')+'">'+
-    '<h2 class="text-xl font-bold">Deal Comparison ('+deals.length+')</h2>'+
+    '<h2 class="text-lg font-bold">Deal Comparison ('+deals.length+')</h2>'+
     '<button onclick="closeModal(\'compareModal\')" class="text-2xl '+(dark?'text-gray-400 hover:text-white':'text-gray-400 hover:text-gray-700')+'">&times;</button></div>'+
     '<div class="overflow-x-auto p-4 sm:p-6"><table class="w-full text-sm">'+
-    '<thead><tr><th class="text-left p-2 '+thCls+' rounded-tl-lg">Attribute</th>'+
-    deals.map((d,i) => '<th class="text-left p-2 '+thCls+(i===deals.length-1?' rounded-tr-lg':'')+'">'+esc(d.vendor)+'</th>').join('')+'</tr></thead>'+
+    '<thead><tr><th class="text-left p-2 '+thCls+' rounded-tl-lg text-xs">Attribute</th>'+
+    deals.map((d,i) => '<th class="text-left p-2 '+thCls+(i===deals.length-1?' rounded-tr-lg':'')+' text-xs">'+esc(d.vendor)+'</th>').join('')+'</tr></thead>'+
     '<tbody>'+rows.map(([label, fn]) =>
-      '<tr><td class="p-2 font-medium border-t '+tdCls+'">'+label+'</td>'+
+      '<tr><td class="p-2 font-medium border-t '+tdCls+' text-xs">'+label+'</td>'+
       deals.map(d => '<td class="p-2 border-t '+tdCls+'">'+fn(d)+'</td>').join('')+'</tr>'
     ).join('')+'</tbody></table></div></div>';
   document.body.appendChild(el);
@@ -619,49 +709,50 @@ function showCompare() {
 // ================================================================
 // RENDER COMPONENTS
 // ================================================================
-function isDark() {
-  return S.mode === 'james' && S.isAuthenticated && S.jamesTheme === 'dark';
-}
+function isDark() { return S.mode === 'james' && S.isAuthenticated && S.jamesTheme === 'dark'; }
 
 function renderStats(deals) {
   const dark = isDark();
-  const card = dark ? 'bg-j-card border border-gray-700' : 'bg-white border border-gray-200 shadow-sm';
+  const card = dark ? 'bg-j-card border border-gray-700/60' : 'bg-white border border-gray-100 shadow-sm';
   const valCls = dark ? 'text-j-text' : 'text-gray-900';
-  const lblCls = dark ? 'text-gray-400' : 'text-gray-500';
+  const lblCls = dark ? 'text-gray-500' : 'text-gray-400';
   const total = deals.reduce((s,d)=>s+d.cost,0);
   const avg = deals.length ? Math.round(total/deals.length) : 0;
-  const newCount = deals.filter(d=>d.status==='new').length;
+  const approved = deals.filter(d=>d.status==='approved');
+  const approvedVal = approved.reduce((s,d)=>s+d.cost,0);
   const urgentCount = deals.filter(d=>{const u=parseUrgency(d.executionWindow);return u==='urgent'||u==='soon';}).length;
+  const avgScore = deals.length ? Math.round(deals.reduce((s,d)=>s+calcDealScore(d),0)/deals.length) : 0;
 
   const stats = [
-    { v:fmtMoney(total), l:'Pipeline Value', accent: dark?'text-emerald-400':'text-emerald-600' },
-    { v:String(deals.length), l:'Active Deals', accent: dark?'text-blue-400':'text-blue-600' },
-    { v:fmtMoney(avg), l:'Avg Deal Size', accent: dark?'text-purple-400':'text-purple-600' },
-    { v:String(urgentCount), l:'Expiring Soon', accent: urgentCount>0?(dark?'text-red-400':'text-red-600'):(dark?'text-gray-400':'text-gray-500') },
+    { v:fmtMoneyK(total), l:'Pipeline Value', accent: dark?'text-emerald-400':'text-emerald-600', sub:deals.length+' deals' },
+    { v:fmtMoneyK(approvedVal), l:'Approved Spend', accent: dark?'text-blue-400':'text-blue-600', sub:approved.length+' deals' },
+    { v:String(avgScore), l:'Avg Deal Score', accent: avgScore>=60?(dark?'text-emerald-400':'text-emerald-600'):(dark?'text-amber-400':'text-amber-600'), sub:'/100' },
+    { v:String(urgentCount), l:'Expiring Soon', accent: urgentCount>0?(dark?'text-red-400':'text-red-600'):(dark?'text-gray-500':'text-gray-400'), sub:urgentCount>0?'action needed':'all clear' },
   ];
 
-  return '<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">'+
-    stats.map(s => '<div class="'+card+' rounded-xl p-3 sm:p-5 fade-in">'+
-      '<div class="'+s.accent+' text-xl sm:text-2xl font-bold truncate">'+s.v+'</div>'+
-      '<div class="'+lblCls+' text-xs sm:text-sm mt-1">'+s.l+'</div></div>'
+  return '<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">'+
+    stats.map(s => '<div class="'+card+' rounded-xl p-4 fade-in">'+
+      '<div class="flex items-baseline gap-1.5"><span class="'+s.accent+' text-xl sm:text-2xl font-bold">'+s.v+'</span>'+
+      '<span class="text-[10px] '+(dark?'text-gray-500':'text-gray-400')+'">'+s.sub+'</span></div>'+
+      '<div class="'+lblCls+' text-[11px] font-medium mt-1 uppercase tracking-wider">'+s.l+'</div></div>'
     ).join('')+'</div>';
 }
 
 function renderGeminiFinder() {
   const dark = isDark();
-  const cardBg = dark ? 'bg-red-950 border border-red-900/60' : 'bg-red-50 border border-red-200';
-  const inputCls = dark ? 'bg-red-900/40 border-red-800 text-white placeholder-red-300/60' : 'bg-white border-red-300 text-gray-900 placeholder-red-400';
+  const cardBg = dark ? 'bg-red-950/80 border border-red-900/40' : 'bg-red-50 border border-red-100';
+  const inputCls = dark ? 'bg-red-900/30 border-red-800/60 text-white placeholder-red-300/50' : 'bg-white border-red-200 text-gray-900 placeholder-red-400/70';
   const suggestions = S.finderOpen ? getFinderSuggestions(S.finderQuery) : [];
 
-  let html = '<div class="'+cardBg+' rounded-xl p-4 sm:p-5 mb-6 fade-in">'+
+  let html = '<div class="'+cardBg+' rounded-xl p-4 mb-4 fade-in">'+
     '<div class="flex items-center justify-between cursor-pointer" onclick="S.finderCollapsed=!S.finderCollapsed;render()">'+
     '<div class="flex items-center gap-2">'+
-    '<span class="text-lg">✦</span>'+
-    '<h3 class="font-semibold '+(dark?'text-red-100':'text-red-800')+'">ASK GEMINI</h3>'+
-    '<span class="text-xs '+(dark?'text-red-300/70 bg-red-900/50':'text-red-600 bg-red-100')+' px-2 py-0.5 rounded-full">AI-Powered Deal Analysis</span></div>'+
-    '<svg class="w-5 h-5 '+(dark?'text-red-300':'text-red-600')+' transform transition-transform '+(S.finderCollapsed?'':'rotate-180')+'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></div>';
+    '<span class="text-sm">✦</span>'+
+    '<h3 class="font-semibold text-sm '+(dark?'text-red-100':'text-red-800')+'">ASK GEMINI</h3>'+
+    '<span class="text-[10px] '+(dark?'text-red-300/60 bg-red-900/40':'text-red-600/80 bg-red-100')+' px-1.5 py-0.5 rounded-full font-medium">AI-Powered</span></div>'+
+    '<svg class="w-4 h-4 '+(dark?'text-red-300':'text-red-500')+' transform transition-transform '+(S.finderCollapsed?'':'rotate-180')+'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></div>';
 
-  if (S.finderCollapsed) { html += '</div>'; return html; }
+  if (S.finderCollapsed) return html + '</div>';
 
   html += '<div class="mt-3"><div class="relative">'+
     '<input type="text" id="finderInput" value="'+escAttr(S.finderQuery)+'" '+
@@ -669,36 +760,30 @@ function renderGeminiFinder() {
     'onkeydown="if(event.key===\'Enter\'){event.preventDefault();runFinder(this.value)}" '+
     'onfocus="S.finderOpen=true;render()" '+
     'placeholder="Ask about deals... e.g., Show me deals under $100K in NA" '+
-    'class="w-full p-3 pr-12 border rounded-xl '+inputCls+' focus:outline-none focus:ring-2 focus:ring-red-500">'+
-    '<button onclick="runFinder(document.getElementById(\'finderInput\').value)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-colors">'+
-    '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></button>';
+    'class="w-full p-2.5 pr-10 border rounded-lg text-sm '+inputCls+' focus:outline-none focus:ring-2 focus:ring-red-500/50">'+
+    '<button onclick="runFinder(document.getElementById(\'finderInput\').value)" class="absolute right-1.5 top-1/2 -translate-y-1/2 bg-red-600 hover:bg-red-700 text-white p-1.5 rounded-md transition-colors">'+
+    '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></button>';
 
   if (suggestions.length > 0) {
-    html += '<div class="absolute top-full left-0 right-0 mt-1 '+
-      (dark?'bg-gray-800 border-gray-600':'bg-white border-gray-200')+
-      ' border rounded-xl shadow-xl z-20 finder-dropdown">';
+    html += '<div class="absolute top-full left-0 right-0 mt-1 '+(dark?'bg-gray-800 border-gray-600':'bg-white border-gray-200')+' border rounded-lg shadow-xl z-20 finder-dropdown">';
     suggestions.forEach((s, i) => {
-      html += '<button onclick="selectFinderSuggestion('+i+')" class="w-full text-left px-4 py-2.5 text-sm '+
-        (dark?'text-gray-300 hover:bg-gray-700':'text-gray-700 hover:bg-gray-50')+
-        ' transition-colors'+(i===0?' rounded-t-xl':'')+(i===suggestions.length-1?' rounded-b-xl':'')+
-        '">'+esc(s)+'</button>';
+      html += '<button onclick="selectFinderSuggestion('+i+')" class="w-full text-left px-3 py-2 text-xs '+(dark?'text-gray-300 hover:bg-gray-700':'text-gray-700 hover:bg-gray-50')+' transition-colors'+(i===0?' rounded-t-lg':'')+(i===suggestions.length-1?' rounded-b-lg':'')+'">'+esc(s)+'</button>';
     });
     html += '</div>';
   }
   html += '</div>';
 
-  // Results
   if (S.finderResults) {
     const r = S.finderResults;
-    html += '<div class="mt-4 p-4 '+(dark?'bg-gray-800/50':'bg-gray-50')+' rounded-xl">'+
+    html += '<div class="mt-3 p-3 '+(dark?'bg-gray-800/50':'bg-white/80')+' rounded-lg">'+
       '<div class="flex items-center gap-2 mb-2">'+
-      '<span class="text-sm font-semibold '+(dark?'text-red-400':'text-red-600')+'">✦ Gemini Analysis</span>'+
-      '<span class="text-xs '+(dark?'text-gray-500':'text-gray-400')+'">for "'+esc(r.query)+'"</span></div>'+
-      '<div class="text-sm '+(dark?'text-gray-300':'text-gray-700')+' leading-relaxed">'+renderMarkdown(r.analysis)+'</div>';
+      '<span class="text-xs font-semibold '+(dark?'text-red-400':'text-red-600')+'">✦ Gemini</span>'+
+      '<span class="text-[10px] '+(dark?'text-gray-500':'text-gray-400')+'">for "'+esc(r.query)+'"</span></div>'+
+      '<div class="text-xs '+(dark?'text-gray-300':'text-gray-700')+' leading-relaxed">'+renderMarkdown(r.analysis)+'</div>';
     if (r.deals.length > 0 && r.deals.length <= 10) {
-      html += '<div class="mt-3 space-y-2">';
+      html += '<div class="mt-2 space-y-1">';
       r.deals.forEach(d => {
-        html += '<div class="flex items-center justify-between p-2 '+(dark?'bg-gray-800':'bg-white')+' rounded-lg text-sm">'+
+        html += '<div class="flex items-center justify-between p-1.5 '+(dark?'bg-gray-800':'bg-gray-50')+' rounded text-xs">'+
           '<div class="flex items-center gap-2 min-w-0">'+vendorDot(d.vendor)+
           '<span class="font-medium '+(dark?'text-j-text':'text-gray-800')+' truncate">'+esc(d.vendor)+'</span>'+
           statusBadge(d.status,dark)+'</div>'+
@@ -706,9 +791,8 @@ function renderGeminiFinder() {
       });
       html += '</div>';
     }
-    html += '<button onclick="S.finderResults=null;S.finderQuery=\'\';render()" class="mt-3 text-xs '+(dark?'text-gray-400 hover:text-gray-300':'text-gray-500 hover:text-gray-700')+' underline">Clear results</button></div>';
+    html += '<button onclick="S.finderResults=null;S.finderQuery=\'\';render()" class="mt-2 text-[10px] '+(dark?'text-gray-500 hover:text-gray-400':'text-gray-400 hover:text-gray-600')+' underline">Clear</button></div>';
   }
-
   html += '</div></div>';
   return html;
 }
@@ -716,78 +800,63 @@ function renderGeminiFinder() {
 function renderFilterBar() {
   const dark = isDark();
   const isJames = S.mode === 'james';
-  const card = dark ? 'bg-j-card border border-gray-700' : (isJames ? 'bg-white border border-gray-200 shadow-sm' : 'bg-gray-50');
-  const inputCls = dark ? 'bg-gray-700 border-gray-600 text-gray-200 focus:ring-emerald-500' : 'bg-white border-gray-300 text-gray-700 focus:ring-blue-500';
-  const lblCls = dark ? 'text-gray-400' : 'text-gray-600';
+  const card = dark ? 'bg-j-card/60 border border-gray-700/40' : (isJames ? 'bg-white/60 border border-gray-100' : 'bg-gray-50/80');
+  const inputCls = dark ? 'bg-gray-700/50 border-gray-600/50 text-gray-200 focus:ring-emerald-500' : 'bg-white border-gray-200 text-gray-700 focus:ring-blue-500';
+  const lblCls = dark ? 'text-gray-500' : 'text-gray-500';
 
-  let html = '<div class="'+card+' rounded-xl p-3 sm:p-4 mb-4">'+
-    '<div class="flex flex-wrap gap-3 items-end">';
-
-  // Search
-  html += '<div class="flex-1 min-w-[200px]"><label class="block text-xs font-medium mb-1 '+lblCls+'">Search</label>'+
-    '<input type="text" placeholder="Search deals..." value="'+escAttr(S.searchQuery)+'" oninput="S.searchQuery=this.value;render()" class="w-full p-2 border rounded-lg '+inputCls+'"></div>';
-
-  // Sort
-  html += '<div class="w-40 sm:w-48"><label class="block text-xs font-medium mb-1 '+lblCls+'">Sort</label>'+
-    '<select onchange="S.sortOption=this.value;render()" class="w-full p-2 border rounded-lg '+inputCls+'">'+
+  let html = '<div class="'+card+' rounded-lg p-3 mb-3"><div class="flex flex-wrap gap-2 items-end">';
+  html += '<div class="flex-1 min-w-[180px]"><label class="block text-[10px] font-medium mb-1 '+lblCls+' uppercase tracking-wider">Search</label>'+
+    '<input type="text" placeholder="Search deals..." value="'+escAttr(S.searchQuery)+'" oninput="S.searchQuery=this.value;render()" class="w-full p-2 text-sm border rounded-lg '+inputCls+'"></div>';
+  html += '<div class="w-36 sm:w-44"><label class="block text-[10px] font-medium mb-1 '+lblCls+' uppercase tracking-wider">Sort</label>'+
+    '<select onchange="S.sortOption=this.value;render()" class="w-full p-2 text-sm border rounded-lg '+inputCls+'">'+
     sortOptions.map(o => '<option value="'+o.v+'"'+(S.sortOption===o.v?' selected':'')+'>'+o.l+'</option>').join('')+'</select></div>';
 
   if (isJames) {
-    // Vendor filter
-    html += '<div class="w-36"><label class="block text-xs font-medium mb-1 '+lblCls+'">Vendor</label>'+
-      '<select onchange="S.vendorFilter=this.value;render()" class="w-full p-2 border rounded-lg '+inputCls+'">'+
-      getUniqueVendors().map(v => '<option value="'+escAttr(v)+'"'+(S.vendorFilter===v?' selected':'')+'>'+(v==='all'?'All Vendors':esc(v))+'</option>').join('')+'</select></div>';
-
-    // Status filter
-    html += '<div class="w-32"><label class="block text-xs font-medium mb-1 '+lblCls+'">Status</label>'+
-      '<select onchange="S.statusFilter=this.value;render()" class="w-full p-2 border rounded-lg '+inputCls+'">'+
+    html += '<div class="w-32"><label class="block text-[10px] font-medium mb-1 '+lblCls+' uppercase tracking-wider">Vendor</label>'+
+      '<select onchange="S.vendorFilter=this.value;render()" class="w-full p-2 text-sm border rounded-lg '+inputCls+'">'+
+      getUniqueVendors().map(v => '<option value="'+escAttr(v)+'"'+(S.vendorFilter===v?' selected':'')+'>'+(v==='all'?'All':esc(v))+'</option>').join('')+'</select></div>';
+    html += '<div class="w-28"><label class="block text-[10px] font-medium mb-1 '+lblCls+' uppercase tracking-wider">Status</label>'+
+      '<select onchange="S.statusFilter=this.value;render()" class="w-full p-2 text-sm border rounded-lg '+inputCls+'">'+
       '<option value="all"'+(S.statusFilter==='all'?' selected':'')+'>All</option>'+
       Object.entries(STATUS).map(([k,v]) => '<option value="'+k+'"'+(S.statusFilter===k?' selected':'')+'>'+v.label+'</option>').join('')+'</select></div>';
-
-    // Region filter
-    html += '<div class="w-32"><label class="block text-xs font-medium mb-1 '+lblCls+'">Region</label>'+
-      '<select onchange="S.regionFilter=this.value;render()" class="w-full p-2 border rounded-lg '+inputCls+'">'+
+    html += '<div class="w-28"><label class="block text-[10px] font-medium mb-1 '+lblCls+' uppercase tracking-wider">Region</label>'+
+      '<select onchange="S.regionFilter=this.value;render()" class="w-full p-2 text-sm border rounded-lg '+inputCls+'">'+
       '<option value="all"'+(S.regionFilter==='all'?' selected':'')+'>All</option>'+
       regions.map(r => '<option value="'+r+'"'+(S.regionFilter===r?' selected':'')+'>'+r+'</option>').join('')+'</select></div>';
   }
-
   html += '</div>';
 
-  // Saved filters row
   if (isJames && S.savedFilters.length > 0) {
-    html += '<div class="flex flex-wrap gap-2 mt-3 pt-3 border-t '+(dark?'border-gray-700':'border-gray-200')+'">';
-    html += '<span class="text-xs '+lblCls+' py-1">Saved:</span>';
+    html += '<div class="flex flex-wrap gap-1.5 mt-2.5 pt-2.5 border-t '+(dark?'border-gray-700/40':'border-gray-200/60')+'">';
+    html += '<span class="text-[10px] '+lblCls+' py-0.5">Saved:</span>';
     S.savedFilters.forEach((f, i) => {
-      html += '<button onclick="loadSavedFilter('+i+')" class="text-xs px-2.5 py-1 rounded-full '+(dark?'bg-gray-700 text-gray-300 hover:bg-gray-600':'bg-gray-200 text-gray-600 hover:bg-gray-300')+' transition-colors">'+esc(f.name)+
-        '<span onclick="event.stopPropagation();deleteSavedFilter('+i+')" class="ml-1 opacity-60 hover:opacity-100">&times;</span></button>';
+      html += '<button onclick="loadSavedFilter('+i+')" class="text-[10px] px-2 py-0.5 rounded-full '+(dark?'bg-gray-700/60 text-gray-300 hover:bg-gray-600':'bg-gray-100 text-gray-600 hover:bg-gray-200')+' transition-colors">'+esc(f.name)+
+        '<span onclick="event.stopPropagation();deleteSavedFilter('+i+')" class="ml-1 opacity-50 hover:opacity-100">&times;</span></button>';
     });
     html += '</div>';
   }
 
   if (isJames) {
-    html += '<div class="flex flex-wrap gap-2 mt-3">'+
-      '<button onclick="saveCurrentFilter()" class="text-xs px-3 py-1.5 rounded-lg '+(dark?'bg-gray-700 text-gray-300 hover:bg-gray-600':'bg-gray-100 text-gray-600 hover:bg-gray-200')+' transition-colors">Save Filter</button>'+
-      '<button onclick="exportCSV()" class="text-xs px-3 py-1.5 rounded-lg '+(dark?'bg-gray-700 text-gray-300 hover:bg-gray-600':'bg-gray-100 text-gray-600 hover:bg-gray-200')+' transition-colors">Export CSV</button>'+
-      '</div>';
+    html += '<div class="flex flex-wrap gap-2 mt-2.5">'+
+      '<button onclick="saveCurrentFilter()" class="text-[10px] px-2.5 py-1 rounded-md '+(dark?'bg-gray-700/60 text-gray-400 hover:bg-gray-600':'bg-gray-100 text-gray-500 hover:bg-gray-200')+' transition-colors font-medium">Save Filter</button>'+
+      '<button onclick="exportCSV()" class="text-[10px] px-2.5 py-1 rounded-md '+(dark?'bg-gray-700/60 text-gray-400 hover:bg-gray-600':'bg-gray-100 text-gray-500 hover:bg-gray-200')+' transition-colors font-medium">Export CSV</button></div>';
   }
-
   html += '</div>';
   return html;
 }
 
 function renderActivityFeed() {
   const dark = isDark();
-  const recent = S.activityLog.slice(0, 15);
-  if (recent.length === 0) return '<p class="text-sm '+(dark?'text-gray-500':'text-gray-400')+'">No recent activity.</p>';
-
-  const icons = { added:'◆', edited:'✎', removed:'✗', status:'↻', note:'✐', bulk:'≡', export:'↗' };
-  return '<div class="space-y-2 max-h-64 overflow-y-auto dark-scroll">'+
+  const recent = S.activityLog.slice(0, 12);
+  if (recent.length === 0) return '<p class="text-[11px] '+(dark?'text-gray-600':'text-gray-400')+'">No recent activity.</p>';
+  const icons = { added:'◆', edited:'✎', removed:'✗', status:'↻', note:'✐', bulk:'≡', export:'↗', negotiation:'$' };
+  return '<div class="space-y-1.5 max-h-56 overflow-y-auto dark-scroll">'+
     recent.map(a => {
       const icon = icons[a.action] || '•';
-      return '<div class="flex gap-2 text-xs '+(dark?'text-gray-400':'text-gray-500')+'">'+
-        '<span class="flex-shrink-0 w-4 text-center">'+icon+'</span>'+
-        '<div class="min-w-0"><span class="font-medium '+(dark?'text-gray-300':'text-gray-700')+'">'+esc(a.vendor)+'</span> '+
-        esc(a.detail)+'<div class="text-xs opacity-60 mt-0.5">'+timeAgo(a.ts)+'</div></div></div>';
+      return '<div class="flex gap-1.5 text-[10px] '+(dark?'text-gray-500':'text-gray-400')+'">'+
+        '<span class="flex-shrink-0 w-3 text-center mt-px">'+icon+'</span>'+
+        '<div class="min-w-0"><span class="font-medium '+(dark?'text-gray-300':'text-gray-600')+'">'+esc(a.vendor)+'</span> '+
+        esc(a.detail)+'<div class="opacity-60 mt-px">'+timeAgo(a.ts)+'</div></div></div>';
     }).join('')+'</div>';
 }
 
@@ -795,39 +864,315 @@ function renderBulkBar() {
   if (S.selectedDeals.size === 0 || S.mode !== 'james') return '';
   const dark = isDark();
   const n = S.selectedDeals.size;
-  return '<div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 '+
-    (dark?'bg-gray-800 border-gray-600':'bg-white border-gray-300')+
-    ' border rounded-2xl shadow-2xl px-4 py-3 flex flex-wrap items-center gap-2 sm:gap-3 fade-in no-print">'+
-    '<span class="text-sm font-medium '+(dark?'text-gray-300':'text-gray-700')+'">'+n+' selected</span>'+
-    '<button onclick="bulkChangeStatus(\'approved\')" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Approve</button>'+
-    '<button onclick="bulkChangeStatus(\'passed\')" class="text-xs px-3 py-1.5 rounded-lg '+(dark?'bg-gray-600 text-gray-200 hover:bg-gray-500':'bg-gray-200 text-gray-700 hover:bg-gray-300')+'">Pass</button>'+
-    '<button onclick="showCompare()" class="text-xs px-3 py-1.5 rounded-lg '+(dark?'bg-blue-600 text-white hover:bg-blue-500':'bg-blue-100 text-blue-700 hover:bg-blue-200')+'">'+(n>=2?'Compare':'Select 2+')+'</button>'+
-    '<button onclick="bulkRemove()" class="text-xs px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600">Remove</button>'+
-    '<button onclick="clearSelection()" class="text-xs px-2 py-1.5 '+(dark?'text-gray-400 hover:text-gray-200':'text-gray-500 hover:text-gray-700')+'">&times;</button>'+
-    '</div>';
+  return '<div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 '+(dark?'bg-gray-800 border-gray-600':'bg-white border-gray-200')+' border rounded-xl shadow-2xl px-3 py-2.5 flex flex-wrap items-center gap-2 fade-in no-print">'+
+    '<span class="text-xs font-semibold '+(dark?'text-gray-300':'text-gray-700')+'">'+n+' selected</span>'+
+    '<button onclick="bulkChangeStatus(\'approved\')" class="text-[10px] px-2.5 py-1 rounded-md bg-emerald-500 text-white hover:bg-emerald-600 font-medium">Approve</button>'+
+    '<button onclick="bulkChangeStatus(\'passed\')" class="text-[10px] px-2.5 py-1 rounded-md '+(dark?'bg-gray-600 text-gray-200 hover:bg-gray-500':'bg-gray-200 text-gray-700 hover:bg-gray-300')+' font-medium">Pass</button>'+
+    '<button onclick="showCompare()" class="text-[10px] px-2.5 py-1 rounded-md '+(dark?'bg-blue-600 text-white hover:bg-blue-500':'bg-blue-100 text-blue-700 hover:bg-blue-200')+' font-medium">'+(n>=2?'Compare':'Select 2+')+'</button>'+
+    '<button onclick="bulkRemove()" class="text-[10px] px-2.5 py-1 rounded-md bg-red-500 text-white hover:bg-red-600 font-medium">Remove</button>'+
+    '<button onclick="clearSelection()" class="text-[10px] px-1.5 py-1 '+(dark?'text-gray-400 hover:text-gray-200':'text-gray-400 hover:text-gray-600')+'">&times;</button></div>';
+}
+
+// ================================================================
+// NEW: BUDGET TRACKER
+// ================================================================
+function renderBudgetTracker() {
+  const dark = isDark();
+  const card = dark ? 'bg-j-card border border-gray-700/60' : 'bg-white border border-gray-100 shadow-sm';
+
+  const quarterSpend = {};
+  S.deals.forEach(d => {
+    if (d.status === 'approved' || d.status === 'reviewing') {
+      const q = getDealQuarter(d);
+      quarterSpend[q] = (quarterSpend[q] || 0) + d.cost;
+    }
+  });
+
+  let html = '<div class="'+card+' rounded-xl p-4 mb-4 fade-in">'+
+    '<h3 class="text-sm font-bold '+(dark?'text-j-text':'text-gray-800')+' mb-3">Budget Tracker</h3>'+
+    '<div class="space-y-3">';
+
+  Object.entries(BUDGETS).forEach(([q, budget]) => {
+    const spent = quarterSpend[q] || 0;
+    const pct = Math.min(100, Math.round(spent / budget * 100));
+    const over = spent > budget;
+    const barColor = over ? 'bg-red-500' : pct > 75 ? 'bg-amber-500' : 'bg-emerald-500';
+    html += '<div>'+
+      '<div class="flex justify-between items-baseline mb-1">'+
+      '<span class="text-xs font-semibold '+(dark?'text-gray-300':'text-gray-700')+'">'+q+'</span>'+
+      '<span class="text-[10px] '+(dark?'text-gray-400':'text-gray-500')+'">'+fmtMoneyK(spent)+' / '+fmtMoneyK(budget)+' ('+pct+'%)</span></div>'+
+      '<div class="h-2.5 '+(dark?'bg-gray-800':'bg-gray-100')+' rounded-full overflow-hidden">'+
+      '<div class="h-full '+barColor+' rounded-full transition-all" style="width:'+pct+'%"></div></div>';
+    if (over) html += '<div class="text-[10px] text-red-500 font-medium mt-0.5">Over budget by '+fmtMoneyK(spent - budget)+'</div>';
+    html += '</div>';
+  });
+
+  html += '</div></div>';
+  return html;
+}
+
+// ================================================================
+// NEW: TIMELINE VIEW
+// ================================================================
+function renderTimeline() {
+  const dark = isDark();
+  const card = dark ? 'bg-j-card border border-gray-700/60' : 'bg-white border border-gray-100 shadow-sm';
+  const textMain = dark ? 'text-j-text' : 'text-gray-800';
+  const textSub = dark ? 'text-gray-400' : 'text-gray-500';
+  const deals = getFilteredDeals();
+
+  const quarters = {};
+  deals.forEach(d => {
+    const q = getDealQuarter(d);
+    if (!quarters[q]) quarters[q] = [];
+    quarters[q].push(d);
+  });
+
+  const qOrder = ['Q1 2026','Q2 2026','Q3 2026','Q4 2026','Other'];
+  const maxCost = Math.max(...deals.map(d=>d.cost), 1);
+
+  let html = '<div class="space-y-4 fade-in">';
+
+  qOrder.forEach(q => {
+    const qDeals = quarters[q];
+    if (!qDeals || qDeals.length === 0) return;
+    const totalQ = qDeals.reduce((s,d)=>s+d.cost,0);
+    const budget = BUDGETS[q];
+
+    html += '<div class="'+card+' rounded-xl p-4">'+
+      '<div class="flex items-baseline justify-between mb-3">'+
+      '<div class="flex items-baseline gap-2">'+
+      '<h3 class="text-sm font-bold '+textMain+'">'+q+'</h3>'+
+      '<span class="text-[10px] '+textSub+'">'+qDeals.length+' deals</span></div>'+
+      '<div class="flex items-baseline gap-2">'+
+      '<span class="text-sm font-bold '+(dark?'text-emerald-400':'text-emerald-600')+'">'+fmtMoneyK(totalQ)+'</span>'+
+      (budget ? '<span class="text-[10px] '+textSub+'">/ '+fmtMoneyK(budget)+' budget</span>' : '')+
+      '</div></div>';
+
+    html += '<div class="space-y-1.5">';
+    qDeals.sort((a,b) => b.cost - a.cost).forEach(d => {
+      const pct = Math.max(8, Math.round(d.cost / maxCost * 100));
+      const vc = VENDOR_COLORS[d.vendor] || '#6b7280';
+      const score = calcDealScore(d);
+      html += '<div class="flex items-center gap-2 group">'+
+        '<div class="w-24 sm:w-32 text-right truncate"><span class="text-[10px] font-medium '+textSub+'">'+esc(d.vendor)+'</span></div>'+
+        '<div class="flex-1 h-7 '+(dark?'bg-gray-800':'bg-gray-50')+' rounded overflow-hidden relative cursor-default" title="'+escAttr(d.vendor+' — '+fmtMoney(d.cost)+' — Score: '+score)+'">'+
+        '<div class="h-full rounded opacity-80" style="width:'+pct+'%;background:'+vc+'"></div>'+
+        '<div class="absolute inset-0 flex items-center px-2">'+
+        '<span class="text-[10px] font-semibold text-white drop-shadow-sm truncate">'+fmtMoneyK(d.cost)+'</span></div></div>'+
+        '<div class="w-10 flex-shrink-0">'+statusBadge(d.status, dark)+'</div>'+
+        '<div class="w-8 flex-shrink-0 text-center">'+scoreBadge(d, dark)+'</div></div>';
+    });
+    html += '</div></div>';
+  });
+
+  if (deals.length === 0) {
+    html += '<div class="'+card+' rounded-xl p-8 text-center"><p class="'+textSub+'">No deals match current filters.</p></div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// ================================================================
+// NEW: ANALYTICS DASHBOARD
+// ================================================================
+function renderAnalytics() {
+  const dark = isDark();
+  const card = dark ? 'bg-j-card border border-gray-700/60' : 'bg-white border border-gray-100 shadow-sm';
+  const textMain = dark ? 'text-j-text' : 'text-gray-800';
+  const textSub = dark ? 'text-gray-400' : 'text-gray-500';
+  const allDeals = S.deals;
+
+  let html = '<div class="space-y-4 fade-in">';
+
+  // Budget Tracker
+  html += renderBudgetTracker();
+
+  // Spend by Vendor
+  const vendorSpend = {};
+  allDeals.forEach(d => { vendorSpend[d.vendor] = (vendorSpend[d.vendor]||0) + d.cost; });
+  const sortedVendors = Object.entries(vendorSpend).sort((a,b) => b[1] - a[1]);
+  const maxVSpend = sortedVendors.length ? sortedVendors[0][1] : 1;
+
+  html += '<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">';
+
+  html += '<div class="'+card+' rounded-xl p-4">'+
+    '<h3 class="text-sm font-bold '+textMain+' mb-3">Spend by Vendor</h3>';
+  sortedVendors.slice(0,10).forEach(([v, spend]) => {
+    const vc = VENDOR_COLORS[v] || '#6b7280';
+    html += barHTML(v, spend, maxVSpend, '', dark);
+    // Replace color in last bar
+    html = html.replace(/class="bar-fill " style="width:/, 'class="bar-fill" style="background:'+vc+';width:');
+  });
+  html += '</div>';
+
+  // Status Distribution
+  html += '<div class="'+card+' rounded-xl p-4">'+
+    '<h3 class="text-sm font-bold '+textMain+' mb-3">Status Distribution</h3>';
+  const statusCounts = {};
+  allDeals.forEach(d => { statusCounts[d.status] = (statusCounts[d.status]||0) + 1; });
+  const maxStatusCount = Math.max(...Object.values(statusCounts), 1);
+  const statusColors = { new:'bg-blue-500', reviewing:'bg-amber-500', approved:'bg-emerald-500', passed:'bg-gray-400', expired:'bg-red-500' };
+  Object.entries(STATUS).forEach(([k, v]) => {
+    const count = statusCounts[k] || 0;
+    html += barHTML(v.label, count, maxStatusCount, statusColors[k] || 'bg-gray-400', dark, count + ' deals');
+  });
+  html += '</div>';
+
+  // Regional Spend
+  html += '<div class="'+card+' rounded-xl p-4">'+
+    '<h3 class="text-sm font-bold '+textMain+' mb-3">Regional Spend</h3>';
+  const regionSpend = {};
+  allDeals.forEach(d => { regionSpend[d.region] = (regionSpend[d.region]||0) + d.cost; });
+  const maxRSpend = Math.max(...Object.values(regionSpend), 1);
+  const regionColors = { NA:'bg-blue-500', Global:'bg-purple-500', EMEA:'bg-amber-500', APAC:'bg-emerald-500' };
+  Object.entries(regionSpend).sort((a,b) => b[1] - a[1]).forEach(([r, spend]) => {
+    html += barHTML(r, spend, maxRSpend, regionColors[r] || 'bg-gray-400', dark);
+  });
+  html += '</div>';
+
+  // Score Distribution
+  html += '<div class="'+card+' rounded-xl p-4">'+
+    '<h3 class="text-sm font-bold '+textMain+' mb-3">Score Distribution</h3>';
+  const scoreBuckets = { '0-39': 0, '40-59': 0, '60-79': 0, '80-100': 0 };
+  allDeals.forEach(d => {
+    const s = calcDealScore(d);
+    if (s < 40) scoreBuckets['0-39']++;
+    else if (s < 60) scoreBuckets['40-59']++;
+    else if (s < 80) scoreBuckets['60-79']++;
+    else scoreBuckets['80-100']++;
+  });
+  const maxBucket = Math.max(...Object.values(scoreBuckets), 1);
+  const bucketColors = { '0-39':'bg-red-500', '40-59':'bg-amber-500', '60-79':'bg-blue-500', '80-100':'bg-emerald-500' };
+  Object.entries(scoreBuckets).forEach(([range, count]) => {
+    html += barHTML(range, count, maxBucket, bucketColors[range], dark, count + ' deals');
+  });
+  html += '</div>';
+
+  html += '</div>'; // end grid
+  html += '</div>';
+  return html;
+}
+
+// ================================================================
+// NEW: VENDOR LEADERBOARD
+// ================================================================
+function renderLeaderboard() {
+  const dark = isDark();
+  const card = dark ? 'bg-j-card border border-gray-700/60' : 'bg-white border border-gray-100 shadow-sm';
+  const textMain = dark ? 'text-j-text' : 'text-gray-800';
+  const textSub = dark ? 'text-gray-400' : 'text-gray-500';
+  const thCls = dark ? 'bg-gray-800/60 text-gray-400' : 'bg-gray-50 text-gray-500';
+  const tdCls = dark ? 'border-gray-700/40' : 'border-gray-100';
+  const allDeals = S.deals;
+
+  // Calculate vendor stats
+  const vendorStats = {};
+  allDeals.forEach(d => {
+    if (!vendorStats[d.vendor]) vendorStats[d.vendor] = { vendor: d.vendor, total: 0, count: 0, approved: 0, totalScore: 0 };
+    const vs = vendorStats[d.vendor];
+    vs.total += d.cost;
+    vs.count++;
+    vs.totalScore += calcDealScore(d);
+    if (d.status === 'approved') vs.approved++;
+  });
+
+  const ranked = Object.values(vendorStats)
+    .map(vs => ({ ...vs, avgScore: Math.round(vs.totalScore / vs.count), approvalRate: Math.round(vs.approved / vs.count * 100) }))
+    .sort((a,b) => b.avgScore - a.avgScore || b.total - a.total);
+
+  let html = '<div class="space-y-4 fade-in">';
+
+  // Leaderboard Table
+  html += '<div class="'+card+' rounded-xl overflow-hidden">'+
+    '<div class="p-4 border-b '+(dark?'border-gray-700/40':'border-gray-100')+'">'+
+    '<h3 class="text-sm font-bold '+textMain+'">Vendor Leaderboard</h3>'+
+    '<p class="text-[10px] '+textSub+' mt-0.5">Ranked by average deal score</p></div>'+
+    '<div class="overflow-x-auto"><table class="w-full text-xs">'+
+    '<thead><tr class="'+thCls+'">'+
+    '<th class="text-left p-3 font-semibold text-[10px] uppercase tracking-wider">#</th>'+
+    '<th class="text-left p-3 font-semibold text-[10px] uppercase tracking-wider">Vendor</th>'+
+    '<th class="text-right p-3 font-semibold text-[10px] uppercase tracking-wider">Avg Score</th>'+
+    '<th class="text-right p-3 font-semibold text-[10px] uppercase tracking-wider">Total Value</th>'+
+    '<th class="text-right p-3 font-semibold text-[10px] uppercase tracking-wider">Deals</th>'+
+    '<th class="text-right p-3 font-semibold text-[10px] uppercase tracking-wider">Approved</th>'+
+    '<th class="text-right p-3 font-semibold text-[10px] uppercase tracking-wider hidden sm:table-cell">Tier</th>'+
+    '</tr></thead><tbody>';
+
+  ranked.forEach((vs, i) => {
+    const vc = VENDOR_COLORS[vs.vendor] || '#6b7280';
+    const sc = scoreColor(vs.avgScore);
+    const tier = VENDOR_TIERS[vs.vendor] || 3;
+    const tierLabel = tier === 1 ? 'Premium' : tier === 2 ? 'Strong' : 'Emerging';
+    const tierCls = tier === 1 ? (dark?'text-emerald-400':'text-emerald-600') : tier === 2 ? (dark?'text-blue-400':'text-blue-600') : (dark?'text-gray-400':'text-gray-500');
+    html += '<tr class="border-t '+tdCls+(i<3?' '+(dark?'bg-emerald-900/10':'bg-emerald-50/50'):'')+'">'+
+      '<td class="p-3 font-bold '+(i<3?(dark?'text-emerald-400':'text-emerald-600'):textSub)+'">'+(i+1)+'</td>'+
+      '<td class="p-3"><div class="flex items-center gap-2">'+
+      '<span class="w-2 h-2 rounded-full flex-shrink-0" style="background:'+vc+'"></span>'+
+      '<span class="font-semibold '+textMain+'">'+esc(vs.vendor)+'</span></div></td>'+
+      '<td class="p-3 text-right font-bold '+(dark?sc.dtxt:sc.text)+'">'+vs.avgScore+'</td>'+
+      '<td class="p-3 text-right font-semibold '+(dark?'text-emerald-400':'text-emerald-600')+'">'+fmtMoneyK(vs.total)+'</td>'+
+      '<td class="p-3 text-right '+textSub+'">'+vs.count+'</td>'+
+      '<td class="p-3 text-right '+textSub+'">'+vs.approvalRate+'%</td>'+
+      '<td class="p-3 text-right '+tierCls+' text-[10px] font-medium hidden sm:table-cell">'+tierLabel+'</td></tr>';
+  });
+
+  html += '</tbody></table></div></div>';
+
+  // Rate Card Benchmarks
+  html += '<div class="'+card+' rounded-xl p-4">'+
+    '<h3 class="text-sm font-bold '+textMain+' mb-1">Rate Card Benchmarks</h3>'+
+    '<p class="text-[10px] '+textSub+' mb-3">Industry average deal sizes by category</p>'+
+    '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">';
+
+  Object.entries(BENCHMARKS).forEach(([cat, data]) => {
+    const catDeals = allDeals.filter(d => data.vendors.includes(d.vendor));
+    const actualAvg = catDeals.length ? Math.round(catDeals.reduce((s,d)=>s+d.cost,0) / catDeals.length) : 0;
+    const diff = data.avgDealSize > 0 ? Math.round((actualAvg - data.avgDealSize) / data.avgDealSize * 100) : 0;
+    const diffColor = diff > 10 ? (dark?'text-red-400':'text-red-600') : diff < -10 ? (dark?'text-emerald-400':'text-emerald-600') : textSub;
+
+    html += '<div class="p-3 '+(dark?'bg-gray-800/40':'bg-gray-50')+' rounded-lg">'+
+      '<div class="text-xs font-semibold '+textMain+' mb-1">'+cat+'</div>'+
+      '<div class="flex justify-between items-baseline">'+
+      '<div class="text-[10px] '+textSub+'">Benchmark: '+fmtMoneyK(data.avgDealSize)+'</div>'+
+      '<div class="text-[10px] '+textSub+'">CPM: $'+data.avgCPM+'</div></div>'+
+      (catDeals.length > 0 ? '<div class="flex justify-between items-baseline mt-1">'+
+        '<div class="text-[10px] font-medium '+textMain+'">Your avg: '+fmtMoneyK(actualAvg)+'</div>'+
+        '<div class="text-[10px] font-semibold '+diffColor+'">'+(diff>0?'+':'')+diff+'%</div></div>' :
+        '<div class="text-[10px] '+textSub+' mt-1 italic">No deals</div>')+
+      '<div class="text-[10px] '+textSub+' mt-1">'+catDeals.length+' deal'+(catDeals.length!==1?'s':'')+'</div></div>';
+  });
+
+  html += '</div></div>';
+  html += '</div>';
+  return html;
 }
 
 // ================================================================
 // PARTNER MODE
 // ================================================================
 function renderPartnerDealCard(deal) {
-  return '<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 card-hover flex flex-col justify-between fade-in">'+
-    '<div>'+
+  const vc = VENDOR_COLORS[deal.vendor] || '#6b7280';
+  const score = calcDealScore(deal);
+  const sc = scoreColor(score);
+  return '<div class="bg-white rounded-xl shadow-sm border border-gray-100 card-hover flex flex-col justify-between fade-in vendor-stripe" style="--vc:'+vc+'">'+
+    '<div class="p-4 sm:p-5">'+
     '<div class="flex items-center justify-between mb-2">'+
     '<div class="flex items-center gap-2">'+vendorDot(deal.vendor)+
-    '<h3 class="text-lg font-bold text-gray-800">'+esc(deal.vendor)+'</h3></div>'+
-    '<div class="flex items-center gap-2">'+urgencyBadge(deal.executionWindow,false)+
-    '<span class="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">'+esc(deal.region)+'</span></div></div>'+
-    '<p class="text-gray-600 text-sm mb-3 line-clamp-3">'+esc(deal.description)+'</p>'+
-    '<div class="flex flex-wrap items-baseline justify-between gap-2 mb-3">'+
-    '<span class="text-2xl font-bold text-blue-600">'+fmtMoney(deal.cost)+'</span>'+
-    '<span class="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded-lg">'+esc(deal.executionWindow)+'</span></div>'+
-    (deal.terms?'<p class="text-xs text-gray-500 italic mb-3">'+esc(deal.terms)+'</p>':'')+
+    '<h3 class="text-base font-bold text-gray-800">'+esc(deal.vendor)+'</h3></div>'+
+    '<div class="flex items-center gap-1.5">'+urgencyBadge(deal.executionWindow,false)+
+    '<span class="text-[10px] font-medium text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">'+esc(deal.region)+'</span></div></div>'+
+    '<p class="text-gray-500 text-xs mb-3 line-clamp-3 leading-relaxed">'+esc(deal.description)+'</p>'+
+    '<div class="flex items-baseline justify-between gap-2 mb-2">'+
+    '<span class="text-xl font-bold text-blue-600">'+fmtMoney(deal.cost)+'</span>'+
+    '<span class="text-[10px] font-medium text-gray-500 bg-gray-50 px-2 py-0.5 rounded">'+esc(deal.executionWindow)+'</span></div>'+
+    (deal.terms?'<p class="text-[10px] text-gray-400 italic">'+esc(deal.terms)+'</p>':'')+
     '</div>'+
-    '<div class="flex flex-wrap justify-end gap-2 mt-3 pt-3 border-t border-gray-100">'+
-    '<a href="'+mailtoAlertJames(deal)+'" class="text-xs font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors">Alert James</a>'+
-    '<button onclick="openDealForm('+deal.id+')" class="text-xs font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">Edit</button>'+
-    '<button onclick="removeDeal('+deal.id+')" class="text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors">Remove</button>'+
+    '<div class="flex flex-wrap justify-end gap-1.5 px-4 sm:px-5 pb-4 sm:pb-5 pt-3 border-t border-gray-50">'+
+    '<a href="'+mailtoAlertJames(deal)+'" class="text-[10px] font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 px-2.5 py-1 rounded-md transition-colors">Alert James</a>'+
+    '<button onclick="openDealForm('+deal.id+')" class="text-[10px] font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 px-2.5 py-1 rounded-md transition-colors">Edit</button>'+
+    '<button onclick="removeDeal('+deal.id+')" class="text-[10px] font-medium bg-red-50 text-red-700 hover:bg-red-100 px-2.5 py-1 rounded-md transition-colors">Remove</button>'+
     '</div></div>';
 }
 
@@ -839,14 +1184,13 @@ function renderPartnerMode() {
   const deals = getFilteredDeals();
   return '<div class="p-3 sm:p-6 lg:p-8"><div class="max-w-7xl mx-auto">'+
     '<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">'+
-    '<div>'+
-    '<h1 class="text-2xl sm:text-3xl font-bold text-gray-800">'+esc(S.currentPartner)+'</h1>'+
-    '<p class="text-sm text-gray-500 mt-1">Submit and manage your media deal proposals</p></div>'+
-    '<button onclick="openDealForm()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-xl shadow-sm transition-colors active:scale-95 w-full sm:w-auto text-center">+ New Deal</button></div>'+
+    '<div><h1 class="text-xl sm:text-2xl font-bold text-gray-800">'+esc(S.currentPartner)+'</h1>'+
+    '<p class="text-xs text-gray-400 mt-0.5">Submit and manage your media deal proposals</p></div>'+
+    '<button onclick="openDealForm()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-5 rounded-lg shadow-sm transition-colors active:scale-95 w-full sm:w-auto text-center text-sm">+ New Deal</button></div>'+
     renderFilterBar()+
     (deals.length===0
-      ? '<div class="text-center py-16 bg-white rounded-xl border border-gray-200"><p class="text-xl text-gray-400">'+(S.searchQuery?'No deals match your search.':'No deals submitted yet.')+'</p><p class="text-gray-400 mt-2 text-sm">'+(S.searchQuery?'Try different search terms.':'Click "New Deal" to get started.')+'</p></div>'
-      : '<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">'+deals.map(d=>renderPartnerDealCard(d)).join('')+'</div>'
+      ? '<div class="text-center py-16 bg-white rounded-xl border border-gray-100"><p class="text-base text-gray-300">'+(S.searchQuery?'No deals match your search.':'No deals submitted yet.')+'</p><p class="text-gray-300 mt-1 text-xs">'+(S.searchQuery?'Try different search terms.':'Click "New Deal" to get started.')+'</p></div>'
+      : '<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">'+deals.map(d=>renderPartnerDealCard(d)).join('')+'</div>'
     )+'</div></div>';
 }
 
@@ -855,28 +1199,53 @@ function renderPartnerMode() {
 // ================================================================
 function geminiSection(deal) {
   const dark = isDark();
-  return '<div class="mt-3 pt-3 border-t '+(dark?'border-gray-700':'border-gray-200')+'">'+
-    '<button onclick="event.stopPropagation();simulateGeminiEval('+deal.id+')" id="gemBtn-'+deal.id+'" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg text-xs transition-colors">✦ Ask Gemini to Evaluate</button>'+
-    '<div id="gemResult-'+deal.id+'" class="mt-2"></div></div>';
+  return '<div class="mt-3 pt-3 border-t '+(dark?'border-gray-700/40':'border-gray-100')+'">'+
+    '<button onclick="event.stopPropagation();simulateGeminiEval('+deal.id+')" id="gemBtn-'+deal.id+'" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-1.5 px-3 rounded-md text-[10px] transition-colors">✦ Ask Gemini to Evaluate</button>'+
+    '<div id="gemResult-'+deal.id+'" class="mt-1"></div></div>';
 }
 
 function notesSection(deal) {
   const dark = isDark();
-  const noteCls = dark ? 'bg-gray-800 text-gray-300' : 'bg-gray-50 text-gray-700';
-  let html = '<div class="mt-3 pt-3 border-t '+(dark?'border-gray-700':'border-gray-200')+'">';
-  html += '<h4 class="text-xs font-semibold '+(dark?'text-gray-400':'text-gray-500')+' mb-2">Notes ('+deal.notes.length+')</h4>';
+  const noteCls = dark ? 'bg-gray-800/60 text-gray-300' : 'bg-gray-50 text-gray-700';
+  let html = '<div class="mt-3 pt-3 border-t '+(dark?'border-gray-700/40':'border-gray-100')+'">';
+  html += '<h4 class="text-[10px] font-semibold '+(dark?'text-gray-500':'text-gray-400')+' mb-1.5 uppercase tracking-wider">Notes ('+deal.notes.length+')</h4>';
   if (deal.notes.length > 0) {
-    html += '<div class="space-y-1.5 mb-2 max-h-32 overflow-y-auto dark-scroll">';
+    html += '<div class="space-y-1 mb-2 max-h-28 overflow-y-auto dark-scroll">';
     deal.notes.forEach(n => {
-      html += '<div class="'+noteCls+' rounded-lg px-3 py-2 text-xs">'+
-        '<div>'+esc(n.text)+'</div>'+
-        '<div class="opacity-50 mt-0.5">'+timeAgo(n.ts)+'</div></div>';
+      html += '<div class="'+noteCls+' rounded px-2.5 py-1.5 text-[10px]">'+
+        '<div>'+esc(n.text)+'</div><div class="opacity-40 mt-px">'+timeAgo(n.ts)+'</div></div>';
     });
     html += '</div>';
   }
-  html += '<div class="flex gap-2">'+
-    '<input type="text" id="noteInput-'+deal.id+'" onclick="event.stopPropagation()" placeholder="Add a note..." class="flex-1 p-2 text-sm border rounded-lg '+(dark?'bg-gray-800 border-gray-600 text-gray-200 placeholder-gray-500':'bg-gray-50 border-gray-300 text-gray-700 placeholder-gray-400')+' focus:outline-none focus:ring-2 focus:ring-emerald-500">'+
-    '<button onclick="event.stopPropagation();addNote('+deal.id+')" class="px-3 py-2 text-sm font-medium rounded-lg '+(dark?'bg-gray-700 text-gray-300 hover:bg-gray-600':'bg-gray-200 text-gray-700 hover:bg-gray-300')+' transition-colors">Add</button></div></div>';
+  html += '<div class="flex gap-1.5">'+
+    '<input type="text" id="noteInput-'+deal.id+'" onclick="event.stopPropagation()" placeholder="Add a note..." class="flex-1 p-1.5 text-xs border rounded-md '+(dark?'bg-gray-800/60 border-gray-600/50 text-gray-200 placeholder-gray-500':'bg-gray-50 border-gray-200 text-gray-700 placeholder-gray-400')+' focus:outline-none focus:ring-1 focus:ring-emerald-500">'+
+    '<button onclick="event.stopPropagation();addNote('+deal.id+')" class="px-2.5 py-1.5 text-[10px] font-medium rounded-md '+(dark?'bg-gray-700 text-gray-300 hover:bg-gray-600':'bg-gray-100 text-gray-700 hover:bg-gray-200')+' transition-colors">Add</button></div></div>';
+  return html;
+}
+
+function negotiationSection(deal) {
+  const dark = isDark();
+  if (!deal.negotiations || deal.negotiations.length === 0) return '';
+  const saved = deal.negotiations.length > 1 ? deal.negotiations[0].cost - deal.cost : 0;
+  let html = '<div class="mt-3 pt-3 border-t '+(dark?'border-gray-700/40':'border-gray-100')+'">';
+  html += '<h4 class="text-[10px] font-semibold '+(dark?'text-gray-500':'text-gray-400')+' mb-1.5 uppercase tracking-wider">Price History'+
+    (saved > 0 ? ' <span class="'+(dark?'text-emerald-400':'text-emerald-600')+' normal-case">Saved '+fmtMoney(saved)+'</span>' : '')+'</h4>';
+  html += '<div class="space-y-1 mb-2">';
+  deal.negotiations.forEach((n, i) => {
+    const isLast = i === deal.negotiations.length - 1;
+    const isCheaper = i > 0 && n.cost < deal.negotiations[i-1].cost;
+    html += '<div class="flex items-center gap-2 text-[10px]">'+
+      '<span class="w-1.5 h-1.5 rounded-full flex-shrink-0 '+(isLast?(dark?'bg-emerald-400':'bg-emerald-500'):(dark?'bg-gray-600':'bg-gray-300'))+'"></span>'+
+      '<span class="font-semibold '+(isLast?(dark?'text-emerald-400':'text-emerald-600'):(dark?'text-gray-400':'text-gray-500'))+'">'+fmtMoney(n.cost)+'</span>'+
+      (isCheaper ? '<span class="'+(dark?'text-emerald-400':'text-emerald-600')+'">↓</span>' : '')+
+      '<span class="'+(dark?'text-gray-500':'text-gray-400')+' truncate">'+esc(n.note)+'</span>'+
+      '<span class="'+(dark?'text-gray-600':'text-gray-300')+' flex-shrink-0 ml-auto">'+esc(n.date)+'</span></div>';
+  });
+  html += '</div>';
+  html += '<div class="flex gap-1.5">'+
+    '<input type="number" id="negCost-'+deal.id+'" onclick="event.stopPropagation()" placeholder="New price" class="w-24 p-1.5 text-xs border rounded-md '+(dark?'bg-gray-800/60 border-gray-600/50 text-gray-200 placeholder-gray-500':'bg-gray-50 border-gray-200 text-gray-700 placeholder-gray-400')+' focus:outline-none focus:ring-1 focus:ring-emerald-500">'+
+    '<input type="text" id="negNote-'+deal.id+'" onclick="event.stopPropagation()" placeholder="Note..." class="flex-1 p-1.5 text-xs border rounded-md '+(dark?'bg-gray-800/60 border-gray-600/50 text-gray-200 placeholder-gray-500':'bg-gray-50 border-gray-200 text-gray-700 placeholder-gray-400')+' focus:outline-none focus:ring-1 focus:ring-emerald-500">'+
+    '<button onclick="event.stopPropagation();addNegotiation('+deal.id+')" class="px-2.5 py-1.5 text-[10px] font-medium rounded-md '+(dark?'bg-gray-700 text-gray-300 hover:bg-gray-600':'bg-gray-100 text-gray-700 hover:bg-gray-200')+' transition-colors">Update</button></div></div>';
   return html;
 }
 
@@ -884,45 +1253,68 @@ function statusActions(deal) {
   const dark = isDark();
   const next = STATUS_FLOW[deal.status] || [];
   if (next.length === 0) return '';
-  return '<div class="flex flex-wrap gap-1.5 mt-3">'+
+  return '<div class="flex flex-wrap gap-1 mt-2">'+
     next.map(s => {
       const cfg = STATUS[s];
       const cls = dark ? cfg.dbg : cfg.bg;
-      return '<button onclick="event.stopPropagation();changeStatus('+deal.id+',\''+s+'\')" class="text-xs font-medium px-2.5 py-1 rounded-lg '+cls+' hover:opacity-80 transition-opacity">→ '+cfg.label+'</button>';
+      return '<button onclick="event.stopPropagation();changeStatus('+deal.id+',\''+s+'\')" class="text-[10px] font-medium px-2 py-0.5 rounded-md '+cls+' hover:opacity-80 transition-opacity">→ '+cfg.label+'</button>';
     }).join('')+'</div>';
+}
+
+function renderBenchmarkLine(deal, dark) {
+  const b = benchmarkDiff(deal);
+  if (!b) return '';
+  const isAbove = b.diffPct > 0;
+  const color = isAbove ? (dark?'text-red-400':'text-red-500') : (dark?'text-emerald-400':'text-emerald-500');
+  return '<div class="text-[10px] '+color+' font-medium">'+(isAbove?'↑':'↓')+' '+Math.abs(b.diffPct)+'% vs '+b.category+' avg ('+fmtMoneyK(b.avgDealSize)+')</div>';
+}
+
+function renderDuplicateWarning(deal, dark) {
+  const dupes = findDuplicates(deal);
+  if (dupes.length === 0) return '';
+  return '<div class="text-[10px] '+(dark?'text-amber-400 bg-amber-900/20':'text-amber-700 bg-amber-50')+' px-2 py-0.5 rounded font-medium inline-block">⚠ '+dupes.length+' similar deal'+(dupes.length>1?'s':'')+' from '+esc(deal.vendor)+'</div>';
 }
 
 function renderJamesDealCard(deal) {
   const dark = isDark();
-  const card = dark ? 'bg-j-card border-gray-700' : 'bg-white border-gray-200 shadow-sm';
+  const card = dark ? 'bg-j-card border-gray-700/50' : 'bg-white border-gray-100';
   const textMain = dark ? 'text-j-text' : 'text-gray-800';
   const textSub = dark ? 'text-gray-400' : 'text-gray-500';
   const selected = S.selectedDeals.has(deal.id);
-  const selBorder = selected ? (dark?'ring-2 ring-emerald-500':'ring-2 ring-blue-500') : '';
+  const selBorder = selected ? (dark?'ring-2 ring-emerald-500/50':'ring-2 ring-blue-400/50') : '';
+  const vc = VENDOR_COLORS[deal.vendor] || '#6b7280';
+  const score = calcDealScore(deal);
 
-  return '<div class="border rounded-xl p-4 sm:p-5 '+card+' '+selBorder+' fade-in">'+
+  return '<div class="border rounded-xl '+card+' '+selBorder+' fade-in vendor-stripe" style="--vc:'+vc+'">'+
+    '<div class="p-4">'+
     '<div class="flex items-start justify-between gap-2">'+
-    '<div class="flex items-start gap-3 min-w-0">'+
-    '<input type="checkbox" '+(selected?'checked':'')+' onchange="toggleSelectDeal('+deal.id+')" class="mt-1 flex-shrink-0 w-4 h-4 rounded accent-emerald-500">'+
-    '<div class="min-w-0"><div class="flex items-center gap-2 flex-wrap">'+vendorDot(deal.vendor)+
-    '<h3 class="font-bold '+textMain+'">'+esc(deal.vendor)+'</h3>'+
+    '<div class="flex items-start gap-2.5 min-w-0">'+
+    '<input type="checkbox" '+(selected?'checked':'')+' onchange="toggleSelectDeal('+deal.id+')" class="mt-1 flex-shrink-0 w-3.5 h-3.5 rounded accent-emerald-500">'+
+    '<div class="min-w-0"><div class="flex items-center gap-1.5 flex-wrap">'+vendorDot(deal.vendor)+
+    '<h3 class="font-bold text-sm '+textMain+'">'+esc(deal.vendor)+'</h3>'+
     statusBadge(deal.status, dark)+
     urgencyBadge(deal.executionWindow, dark)+'</div>'+
-    '<p class="text-xs '+textSub+' mt-0.5">'+fmtDate(deal.createdAt)+'</p></div></div>'+
-    '<div class="text-right flex-shrink-0">'+
-    '<div class="text-xl sm:text-2xl font-bold '+(dark?'text-emerald-400':'text-emerald-600')+'">'+fmtMoney(deal.cost)+'</div>'+
-    '<div class="flex items-center justify-end gap-2 mt-1">'+
-    '<span class="text-xs font-medium '+textSub+' '+(dark?'bg-gray-700':'bg-gray-100')+' px-2 py-0.5 rounded-full">'+esc(deal.region)+'</span>'+
-    '<span class="text-xs '+textSub+'">'+esc(deal.executionWindow)+'</span></div></div></div>'+
-    '<p class="text-sm '+textSub+' my-3">'+esc(deal.description)+'</p>'+
-    (deal.terms?'<p class="text-xs '+textSub+' italic mb-2">Terms: '+esc(deal.terms)+'</p>':'')+
+    '<div class="flex items-center gap-2 mt-1 flex-wrap">'+
+    renderBenchmarkLine(deal, dark)+
+    renderDuplicateWarning(deal, dark)+
+    '</div>'+
+    '<p class="text-[10px] '+textSub+' mt-0.5">'+fmtDate(deal.createdAt)+'</p></div></div>'+
+    '<div class="text-right flex-shrink-0 flex items-start gap-2">'+
+    scoreBadge(deal, dark)+
+    '<div><div class="text-lg font-bold '+(dark?'text-emerald-400':'text-emerald-600')+'">'+fmtMoney(deal.cost)+'</div>'+
+    '<div class="flex items-center justify-end gap-1.5 mt-0.5">'+
+    '<span class="text-[10px] font-medium '+textSub+' '+(dark?'bg-gray-700/50':'bg-gray-50')+' px-1.5 py-0.5 rounded">'+esc(deal.region)+'</span>'+
+    '<span class="text-[10px] '+textSub+'">'+esc(deal.executionWindow)+'</span></div></div></div></div>'+
+    '<p class="text-xs '+textSub+' my-2 leading-relaxed">'+esc(deal.description)+'</p>'+
+    (deal.terms?'<p class="text-[10px] '+textSub+' italic mb-1">'+esc(deal.terms)+'</p>':'')+
     statusActions(deal)+
+    negotiationSection(deal)+
     notesSection(deal)+
     geminiSection(deal)+
-    '<div class="flex flex-wrap justify-end gap-2 mt-3 pt-3 border-t '+(dark?'border-gray-700':'border-gray-100')+'">'+
-    '<button onclick="openDealForm('+deal.id+')" class="text-xs font-medium '+(dark?'bg-gray-600 text-gray-200 hover:bg-gray-500':'bg-gray-100 text-gray-700 hover:bg-gray-200')+' px-3 py-1.5 rounded-lg transition-colors">Edit</button>'+
-    '<button onclick="removeDeal('+deal.id+')" class="text-xs font-medium '+(dark?'bg-red-900/50 text-red-300 hover:bg-red-800/50':'bg-red-50 text-red-700 hover:bg-red-100')+' px-3 py-1.5 rounded-lg transition-colors">Remove</button>'+
-    '</div></div>';
+    '<div class="flex flex-wrap justify-end gap-1.5 mt-3 pt-3 border-t '+(dark?'border-gray-700/30':'border-gray-50')+'">'+
+    '<button onclick="openDealForm('+deal.id+')" class="text-[10px] font-medium '+(dark?'bg-gray-700/50 text-gray-300 hover:bg-gray-600':'bg-gray-50 text-gray-600 hover:bg-gray-100')+' px-2.5 py-1 rounded-md transition-colors">Edit</button>'+
+    '<button onclick="removeDeal('+deal.id+')" class="text-[10px] font-medium '+(dark?'bg-red-900/30 text-red-300 hover:bg-red-800/40':'bg-red-50 text-red-600 hover:bg-red-100')+' px-2.5 py-1 rounded-md transition-colors">Remove</button>'+
+    '</div></div></div>';
 }
 
 function renderJamesListItem(deal) {
@@ -931,30 +1323,32 @@ function renderJamesListItem(deal) {
   const selected = S.selectedDeals.has(deal.id);
   const textMain = dark ? 'text-j-text' : 'text-gray-800';
   const textSub = dark ? 'text-gray-400' : 'text-gray-500';
-  const hoverBg = dark ? 'hover:bg-gray-800' : 'hover:bg-gray-50';
-  const border = dark ? 'border-gray-700' : 'border-gray-200';
+  const hoverBg = dark ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50';
+  const border = dark ? 'border-gray-700/40' : 'border-gray-100';
+  const score = calcDealScore(deal);
 
   let html = '<div class="border-b last:border-b-0 '+border+'">';
-  html += '<div onclick="toggleJamesRow('+deal.id+')" class="flex items-center p-3 sm:p-4 cursor-pointer '+hoverBg+' transition-colors" role="button">'+
-    '<input type="checkbox" '+(selected?'checked':'')+' onclick="event.stopPropagation()" onchange="toggleSelectDeal('+deal.id+')" class="mr-3 flex-shrink-0 w-4 h-4 rounded accent-emerald-500">'+
-    '<div class="flex items-center gap-2 flex-1 min-w-0">'+vendorDot(deal.vendor)+
-    '<span class="font-semibold '+textMain+' truncate">'+esc(deal.vendor)+'</span>'+
+  html += '<div onclick="toggleJamesRow('+deal.id+')" class="flex items-center p-3 cursor-pointer '+hoverBg+' transition-colors" role="button">'+
+    '<input type="checkbox" '+(selected?'checked':'')+' onclick="event.stopPropagation()" onchange="toggleSelectDeal('+deal.id+')" class="mr-2.5 flex-shrink-0 w-3.5 h-3.5 rounded accent-emerald-500">'+
+    '<div class="flex items-center gap-1.5 flex-1 min-w-0">'+vendorDot(deal.vendor)+
+    '<span class="font-semibold text-xs '+textMain+' truncate">'+esc(deal.vendor)+'</span>'+
     statusBadge(deal.status, dark)+'</div>'+
-    '<div class="w-20 '+textSub+' text-xs hidden lg:block truncate px-2">'+esc(deal.region)+'</div>'+
-    '<div class="w-28 text-right font-bold '+(dark?'text-emerald-400':'text-emerald-600')+' flex-shrink-0 text-sm">'+fmtMoney(deal.cost)+'</div>'+
-    '<div class="w-28 text-right '+textSub+' hidden sm:block flex-shrink-0 text-xs px-2">'+esc(deal.executionWindow)+'</div>'+
+    '<div class="w-8 flex-shrink-0 text-center">'+scoreBadge(deal, dark)+'</div>'+
+    '<div class="w-16 '+textSub+' text-[10px] hidden lg:block truncate px-1">'+esc(deal.region)+'</div>'+
+    '<div class="w-24 text-right font-bold '+(dark?'text-emerald-400':'text-emerald-600')+' flex-shrink-0 text-xs">'+fmtMoney(deal.cost)+'</div>'+
+    '<div class="w-24 text-right '+textSub+' hidden sm:block flex-shrink-0 text-[10px] px-1">'+esc(deal.executionWindow)+'</div>'+
     urgencyBadge(deal.executionWindow, dark)+
-    '<svg class="w-5 h-5 '+textSub+' ml-2 flex-shrink-0 transform transition-transform '+(exp?'rotate-180':'')+'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>'+
-    '</div>';
+    '<svg class="w-4 h-4 '+textSub+' ml-1.5 flex-shrink-0 transform transition-transform '+(exp?'rotate-180':'')+'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></div>';
 
   if (exp) {
-    html += '<div class="p-4 sm:p-5 '+(dark?'bg-gray-900/50':'bg-gray-50')+' fade-in">'+
-      '<p class="text-sm '+textSub+' mb-3">'+esc(deal.description)+'</p>'+
-      (deal.terms?'<p class="text-xs '+textSub+' italic mb-3">Terms: '+esc(deal.terms)+'</p>':'')+
-      statusActions(deal)+notesSection(deal)+geminiSection(deal)+
-      '<div class="flex flex-wrap justify-end gap-2 mt-3">'+
-      '<button onclick="event.stopPropagation();openDealForm('+deal.id+')" class="text-xs font-medium '+(dark?'bg-gray-600 text-gray-200 hover:bg-gray-500':'bg-gray-200 text-gray-700 hover:bg-gray-300')+' px-3 py-1.5 rounded-lg">Edit</button>'+
-      '<button onclick="event.stopPropagation();removeDeal('+deal.id+')" class="text-xs font-medium '+(dark?'bg-red-900/50 text-red-300 hover:bg-red-800/50':'bg-red-50 text-red-700 hover:bg-red-100')+' px-3 py-1.5 rounded-lg">Remove</button></div></div>';
+    html += '<div class="px-4 pb-4 '+(dark?'bg-gray-900/30':'bg-gray-50/50')+' fade-in">'+
+      '<div class="flex items-center gap-2 mb-2 flex-wrap">'+renderBenchmarkLine(deal, dark)+renderDuplicateWarning(deal, dark)+'</div>'+
+      '<p class="text-xs '+textSub+' mb-2 leading-relaxed">'+esc(deal.description)+'</p>'+
+      (deal.terms?'<p class="text-[10px] '+textSub+' italic mb-2">'+esc(deal.terms)+'</p>':'')+
+      statusActions(deal)+negotiationSection(deal)+notesSection(deal)+geminiSection(deal)+
+      '<div class="flex flex-wrap justify-end gap-1.5 mt-3">'+
+      '<button onclick="event.stopPropagation();openDealForm('+deal.id+')" class="text-[10px] font-medium '+(dark?'bg-gray-700/50 text-gray-300 hover:bg-gray-600':'bg-gray-100 text-gray-600 hover:bg-gray-200')+' px-2.5 py-1 rounded-md">Edit</button>'+
+      '<button onclick="event.stopPropagation();removeDeal('+deal.id+')" class="text-[10px] font-medium '+(dark?'bg-red-900/30 text-red-300 hover:bg-red-800/40':'bg-red-50 text-red-600 hover:bg-red-100')+' px-2.5 py-1 rounded-md">Remove</button></div></div>';
   }
   html += '</div>';
   return html;
@@ -971,97 +1365,121 @@ function renderJamesMode() {
   const allDeals = S.deals;
   const textMain = dark ? 'text-j-text' : 'text-gray-800';
   const textSub = dark ? 'text-gray-400' : 'text-gray-500';
-  const card = dark ? 'bg-j-card border border-gray-700' : 'bg-white border border-gray-200 shadow-sm';
+  const card = dark ? 'bg-j-card border border-gray-700/60' : 'bg-white border border-gray-100 shadow-sm';
   const vm = S.viewMode;
+  const tab = S.jamesTab;
 
   const monthlyLink = 'mailto:?bcc='+S.vendorEmails.join(',')+'&subject='+encodeURIComponent('Monthly Media Deal Update Request')+'&body='+encodeURIComponent('Hi Partners,\n\nPlease use the MFG Media Deal Hub to update your latest available deals.\n\nBest,\nJames Palmer');
 
-  let dealsHtml;
-  const hasFilter = S.searchQuery || S.vendorFilter !== 'all' || S.statusFilter !== 'all' || S.regionFilter !== 'all';
-  if (deals.length === 0) {
-    dealsHtml = '<div class="text-center py-16 '+card+' rounded-xl"><p class="text-lg '+textSub+'">'+(hasFilter?'No deals match your filters.':'The pipeline is empty.')+'</p></div>';
-  } else if (vm === 'tiles') {
-    dealsHtml = '<div class="grid grid-cols-1 xl:grid-cols-2 gap-4">'+deals.map(d=>renderJamesDealCard(d)).join('')+'</div>';
-  } else {
-    const headerBg = dark ? 'bg-gray-800' : 'bg-gray-50';
-    dealsHtml = '<div class="'+card+' rounded-xl overflow-hidden">'+
-      '<div class="flex items-center p-3 sm:p-4 '+headerBg+' font-medium '+textSub+' text-xs">'+
-      '<div class="mr-3 w-4"></div><div class="flex-1">VENDOR</div>'+
-      '<div class="w-20 hidden lg:block">REGION</div>'+
-      '<div class="w-28 text-right">COST</div>'+
-      '<div class="w-28 text-right hidden sm:block">WINDOW</div>'+
-      '<div class="w-20"></div><div class="w-7"></div></div>'+
-      deals.map(d=>renderJamesListItem(d)).join('')+'</div>';
-  }
-
-  // Main layout
   let html = '<div class="p-3 sm:p-6 lg:p-8"><div class="max-w-7xl mx-auto">';
 
   // Title + actions
-  html += '<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">'+
-    '<div><h1 class="text-2xl sm:text-3xl font-bold '+textMain+'">Evaluation Console</h1>'+
-    '<p class="text-sm '+textSub+' mt-1">Review, evaluate, and manage media deal proposals</p></div>'+
-    '<div class="flex items-center gap-2">'+
-    '<button onclick="openDealForm()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 px-5 rounded-xl shadow-sm transition-colors active:scale-95 text-sm">+ New Deal</button></div></div>';
+  html += '<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">'+
+    '<div><h1 class="text-xl sm:text-2xl font-bold '+textMain+'">Evaluation Console</h1>'+
+    '<p class="text-[11px] '+textSub+' mt-0.5">Review, evaluate, and manage media deal proposals</p></div>'+
+    '<button onclick="openDealForm()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2 px-5 rounded-lg shadow-sm transition-colors active:scale-95 text-sm">+ New Deal</button></div>';
 
-  // Stats
+  // Tab Navigation
+  const tabBg = dark ? 'border-gray-700/40' : 'border-gray-200';
+  const tabActive = dark ? 'text-emerald-400' : 'text-emerald-600';
+  const tabInactive = dark ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600';
+  html += '<div class="flex gap-0 border-b '+tabBg+' mb-4 overflow-x-auto no-print">'+
+    ['deals','timeline','analytics','leaderboard'].map(t => {
+      const labels = { deals:'Deals', timeline:'Timeline', analytics:'Analytics', leaderboard:'Leaderboard' };
+      const isActive = tab === t;
+      return '<button onclick="S.jamesTab=\''+t+'\';render()" class="tab-btn '+(isActive?'active '+tabActive:tabInactive)+'">'+labels[t]+'</button>';
+    }).join('')+'</div>';
+
+  // Stats (all tabs)
   html += renderStats(allDeals);
 
-  // Layout: main + sidebar
-  html += '<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">';
+  // Tab content
+  if (tab === 'timeline') {
+    html += renderFilterBar();
+    html += renderTimeline();
+  } else if (tab === 'analytics') {
+    html += renderAnalytics();
+  } else if (tab === 'leaderboard') {
+    html += renderLeaderboard();
+  } else {
+    // Deals tab
+    let dealsHtml;
+    const hasFilter = S.searchQuery || S.vendorFilter !== 'all' || S.statusFilter !== 'all' || S.regionFilter !== 'all';
+    if (deals.length === 0) {
+      dealsHtml = '<div class="text-center py-16 '+card+' rounded-xl"><p class="text-sm '+textSub+'">'+(hasFilter?'No deals match your filters.':'The pipeline is empty.')+'</p></div>';
+    } else if (vm === 'tiles') {
+      dealsHtml = '<div class="grid grid-cols-1 xl:grid-cols-2 gap-3">'+deals.map(d=>renderJamesDealCard(d)).join('')+'</div>';
+    } else {
+      const headerBg = dark ? 'bg-gray-800/60' : 'bg-gray-50';
+      dealsHtml = '<div class="'+card+' rounded-xl overflow-hidden">'+
+        '<div class="flex items-center p-3 '+headerBg+' font-semibold '+textSub+' text-[10px] uppercase tracking-wider">'+
+        '<div class="mr-2.5 w-3.5"></div><div class="flex-1">Vendor</div>'+
+        '<div class="w-8">Score</div>'+
+        '<div class="w-16 hidden lg:block">Region</div>'+
+        '<div class="w-24 text-right">Cost</div>'+
+        '<div class="w-24 text-right hidden sm:block">Window</div>'+
+        '<div class="w-16"></div><div class="w-5"></div></div>'+
+        deals.map(d=>renderJamesListItem(d)).join('')+'</div>';
+    }
 
-  // Main content (3/4)
-  html += '<div class="lg:col-span-3">';
+    // Grid: main + sidebar
+    html += '<div class="grid grid-cols-1 lg:grid-cols-4 gap-4">';
 
-  // Gemini Finder
-  html += renderGeminiFinder();
+    // Main content (3/4)
+    html += '<div class="lg:col-span-3">';
+    html += renderGeminiFinder();
 
-  // View controls
-  html += '<div class="flex flex-wrap items-center justify-between gap-3 mb-4">'+
-    '<div class="flex items-center gap-3">'+
-    '<h2 class="text-lg font-semibold '+textMain+'">Deals ('+deals.length+')</h2>'+
-    '<button onclick="selectAllVisible()" class="text-xs '+textSub+' hover:underline">'+(S.selectedDeals.size===deals.length&&deals.length>0?'Deselect All':'Select All')+'</button></div>'+
-    '<div class="flex items-center gap-2">'+
-    '<div class="flex '+(dark?'bg-gray-800 border-gray-700':'bg-gray-100 border-gray-200')+' border rounded-lg p-0.5">'+
-    '<button onclick="S.viewMode=\'tiles\';render()" class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors '+(vm==='tiles'?'bg-emerald-500 text-white':(dark?'text-gray-400 hover:bg-gray-700':'text-gray-500 hover:bg-gray-200'))+'">Tiles</button>'+
-    '<button onclick="S.viewMode=\'list\';render()" class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors '+(vm==='list'?'bg-emerald-500 text-white':(dark?'text-gray-400 hover:bg-gray-700':'text-gray-500 hover:bg-gray-200'))+'">List</button></div></div></div>';
+    // View controls
+    html += '<div class="flex flex-wrap items-center justify-between gap-2 mb-3">'+
+      '<div class="flex items-center gap-2">'+
+      '<h2 class="text-sm font-bold '+textMain+'">Deals ('+deals.length+')</h2>'+
+      '<button onclick="selectAllVisible()" class="text-[10px] '+textSub+' hover:underline">'+(S.selectedDeals.size===deals.length&&deals.length>0?'Deselect All':'Select All')+'</button></div>'+
+      '<div class="flex items-center gap-1.5">'+
+      '<div class="flex '+(dark?'bg-gray-800/60 border-gray-700/40':'bg-gray-50 border-gray-100')+' border rounded-md p-0.5">'+
+      '<button onclick="S.viewMode=\'tiles\';render()" class="px-2.5 py-1 rounded text-[10px] font-medium transition-colors '+(vm==='tiles'?'bg-emerald-500 text-white':(dark?'text-gray-400 hover:bg-gray-700':'text-gray-400 hover:bg-gray-200'))+'">Tiles</button>'+
+      '<button onclick="S.viewMode=\'list\';render()" class="px-2.5 py-1 rounded text-[10px] font-medium transition-colors '+(vm==='list'?'bg-emerald-500 text-white':(dark?'text-gray-400 hover:bg-gray-700':'text-gray-400 hover:bg-gray-200'))+'">List</button></div></div></div>';
 
-  html += renderFilterBar();
-  html += dealsHtml;
-  html += '</div>';
+    html += renderFilterBar();
+    html += dealsHtml;
+    html += '</div>';
 
-  // Sidebar (1/4)
-  html += '<div class="lg:col-span-1"><div class="space-y-4 lg:sticky lg:top-20">';
+    // Sidebar (1/4)
+    html += '<div class="lg:col-span-1"><div class="space-y-3 lg:sticky lg:top-16">';
 
-  // Activity Feed
-  html += '<div class="'+card+' rounded-xl p-4">'+
-    '<h3 class="font-semibold '+textMain+' mb-3 text-sm">Recent Activity</h3>'+
-    renderActivityFeed()+'</div>';
+    // Activity Feed
+    html += '<div class="'+card+' rounded-xl p-3.5">'+
+      '<h3 class="font-bold text-xs '+textMain+' mb-2">Recent Activity</h3>'+
+      renderActivityFeed()+'</div>';
 
-  // Vendor Comms
-  html += '<div class="'+card+' rounded-xl p-4">'+
-    '<h3 class="font-semibold '+textMain+' mb-3 text-sm">Vendor Comms</h3>'+
-    '<div class="space-y-1.5 mb-3 max-h-36 overflow-y-auto dark-scroll">'+
-    S.vendorEmails.map((e,i) => '<div class="flex items-center justify-between '+(dark?'bg-gray-800':'bg-gray-50')+' p-2 rounded-lg">'+
-      '<span class="'+textSub+' text-xs truncate">'+esc(e)+'</span>'+
-      '<button onclick="removeVendorEmail('+i+')" class="text-red-400 hover:text-red-300 flex-shrink-0 ml-2 p-1">&times;</button></div>'
-    ).join('')+'</div>'+
-    '<div class="flex gap-2"><input type="email" id="newEmailInput" placeholder="vendor@email.com" class="flex-1 p-2 text-sm border rounded-lg '+(dark?'bg-gray-800 border-gray-600 text-gray-200 placeholder-gray-500':'bg-gray-50 border-gray-300 text-gray-700 placeholder-gray-400')+' focus:outline-none focus:ring-2 focus:ring-emerald-500">'+
-    '<button onclick="addVendorEmail()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-3 rounded-lg transition-colors text-sm">+</button></div>'+
-    '<a href="'+monthlyLink+'" class="mt-3 w-full block text-center text-xs font-medium '+(dark?'bg-gray-700 text-gray-300 hover:bg-gray-600':'bg-gray-100 text-gray-700 hover:bg-gray-200')+' py-2 px-4 rounded-lg transition-colors">Send Monthly Update</a></div>';
+    // Vendor Comms
+    html += '<div class="'+card+' rounded-xl p-3.5">'+
+      '<h3 class="font-bold text-xs '+textMain+' mb-2">Vendor Comms</h3>'+
+      '<div class="space-y-1 mb-2 max-h-32 overflow-y-auto dark-scroll">'+
+      S.vendorEmails.map((e,i) => '<div class="flex items-center justify-between '+(dark?'bg-gray-800/40':'bg-gray-50')+' p-1.5 rounded">'+
+        '<span class="'+textSub+' text-[10px] truncate">'+esc(e)+'</span>'+
+        '<button onclick="removeVendorEmail('+i+')" class="text-red-400 hover:text-red-300 flex-shrink-0 ml-1 p-0.5 text-xs">&times;</button></div>'
+      ).join('')+'</div>'+
+      '<div class="flex gap-1.5"><input type="email" id="newEmailInput" placeholder="vendor@email.com" class="flex-1 p-1.5 text-xs border rounded-md '+(dark?'bg-gray-800/60 border-gray-600/50 text-gray-200 placeholder-gray-500':'bg-gray-50 border-gray-200 text-gray-700 placeholder-gray-400')+' focus:outline-none focus:ring-1 focus:ring-emerald-500">'+
+      '<button onclick="addVendorEmail()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-2.5 rounded-md transition-colors text-xs">+</button></div>'+
+      '<a href="'+monthlyLink+'" class="mt-2 w-full block text-center text-[10px] font-medium '+(dark?'bg-gray-700/50 text-gray-400 hover:bg-gray-600':'bg-gray-50 text-gray-600 hover:bg-gray-100')+' py-1.5 px-3 rounded-md transition-colors">Send Monthly Update</a></div>';
 
-  // Gemini branding
-  html += '<div class="'+card+' rounded-xl p-4 text-center">'+
-    '<div class="text-xs '+textSub+'">Powered by</div>'+
-    '<div class="font-semibold '+(dark?'text-red-400':'text-red-600')+' text-sm mt-1">Google Gemini AI</div>'+
-    '<div class="text-xs '+textSub+' mt-1">Simulated demo mode</div></div>';
+    // Gemini branding
+    html += '<div class="'+card+' rounded-xl p-3.5 text-center">'+
+      '<div class="text-[10px] '+textSub+'">Powered by</div>'+
+      '<div class="font-bold '+(dark?'text-red-400':'text-red-600')+' text-xs mt-0.5">Google Gemini AI</div>'+
+      '<div class="text-[10px] '+textSub+' mt-0.5">Simulated demo mode</div></div>';
 
-  html += '</div></div>'; // end sidebar
-  html += '</div>'; // end grid
+    html += '</div></div>'; // end sidebar
+    html += '</div>'; // end grid
+  }
+
   html += '</div></div>'; // end container
   return html;
 }
 
+// ================================================================
+// VENDOR EMAIL MANAGEMENT
+// ================================================================
 function addVendorEmail() {
   const input = document.getElementById('newEmailInput');
   const email = input.value.trim();
@@ -1079,7 +1497,6 @@ function removeVendorEmail(idx) {
   render();
 }
 
-
 // ================================================================
 // MODALS
 // ================================================================
@@ -1090,18 +1507,18 @@ function showPartnerSelection() {
   const partners = [...majorPartners, 'Other'];
   const el = document.createElement('div');
   el.id = 'partnerModal';
-  el.className = 'fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-3 sm:p-4 fade-in';
+  el.className = 'fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 fade-in';
   el.innerHTML = '<div class="bg-white rounded-2xl p-5 sm:p-8 shadow-2xl w-full max-w-lg relative max-h-[90vh] overflow-y-auto">'+
-    '<button onclick="closeModal(\'partnerModal\')" class="absolute top-3 right-4 text-gray-400 hover:text-gray-600 text-2xl">&times;</button>'+
-    '<h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Identify Yourself</h2>'+
-    '<p class="text-gray-500 text-sm mb-5">Select your company to continue.</p>'+
-    '<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[45vh] overflow-y-auto" id="partnerGrid">'+
-    partners.map((p,i) => '<button onclick="selectPartner(this,'+i+')" class="p-3 border border-gray-200 rounded-xl font-medium text-sm transition-all hover:shadow-md bg-white text-gray-700 hover:bg-gray-50 active:scale-95">'+esc(p)+'</button>').join('')+
+    '<button onclick="closeModal(\'partnerModal\')" class="absolute top-3 right-4 text-gray-300 hover:text-gray-500 text-2xl">&times;</button>'+
+    '<h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-0.5">Identify Yourself</h2>'+
+    '<p class="text-gray-400 text-xs mb-5">Select your company to continue.</p>'+
+    '<div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-[45vh] overflow-y-auto" id="partnerGrid">'+
+    partners.map((p,i) => '<button onclick="selectPartner(this,'+i+')" class="p-2.5 border border-gray-100 rounded-lg font-medium text-xs transition-all hover:shadow bg-white text-gray-700 hover:bg-gray-50 active:scale-95">'+esc(p)+'</button>').join('')+
     '</div>'+
-    '<div id="otherPartnerInput" class="hidden mt-4"><label class="block text-sm font-medium text-gray-700 mb-1">Company Name</label>'+
-    '<input id="otherPartnerName" type="text" placeholder="Enter company name" class="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"></div>'+
-    '<p id="partnerError" class="text-red-500 mt-3 text-sm hidden"></p>'+
-    '<button onclick="confirmPartnerSelection()" id="partnerContinueBtn" disabled class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl mt-5 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed">Continue</button></div>';
+    '<div id="otherPartnerInput" class="hidden mt-4"><label class="block text-xs font-medium text-gray-600 mb-1">Company Name</label>'+
+    '<input id="otherPartnerName" type="text" placeholder="Enter company name" class="w-full p-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"></div>'+
+    '<p id="partnerError" class="text-red-500 mt-3 text-xs hidden"></p>'+
+    '<button onclick="confirmPartnerSelection()" id="partnerContinueBtn" disabled class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg mt-5 transition-colors disabled:bg-gray-200 disabled:cursor-not-allowed text-sm">Continue</button></div>';
   document.body.appendChild(el);
 }
 
@@ -1109,9 +1526,9 @@ function selectPartner(btn, idx) {
   _partnerIdx = idx;
   const partners = [...majorPartners, 'Other'];
   document.getElementById('partnerGrid').querySelectorAll('button').forEach(b => {
-    b.className = 'p-3 border border-gray-200 rounded-xl font-medium text-sm transition-all hover:shadow-md bg-white text-gray-700 hover:bg-gray-50 active:scale-95';
+    b.className = 'p-2.5 border border-gray-100 rounded-lg font-medium text-xs transition-all hover:shadow bg-white text-gray-700 hover:bg-gray-50 active:scale-95';
   });
-  btn.className = 'p-3 border-2 border-blue-500 rounded-xl font-medium text-sm transition-all bg-blue-50 text-blue-700 ring-2 ring-blue-200';
+  btn.className = 'p-2.5 border-2 border-blue-500 rounded-lg font-medium text-xs transition-all bg-blue-50 text-blue-700 ring-2 ring-blue-100';
   document.getElementById('otherPartnerInput').classList.toggle('hidden', partners[idx] !== 'Other');
   document.getElementById('partnerContinueBtn').disabled = false;
   document.getElementById('partnerError').classList.add('hidden');
@@ -1148,8 +1565,8 @@ function openDealForm(editId) {
   const dark = isJames && isDark();
   const bgModal = dark ? 'bg-j-bg/90' : 'bg-gray-500/50';
   const cardCls = dark ? 'bg-j-card text-j-text' : 'bg-white text-gray-800';
-  const inputCls = dark ? 'bg-gray-700 border-gray-600 text-white focus:ring-emerald-500' : 'bg-white border-gray-300 text-gray-800 focus:ring-blue-500';
-  const lblCls = dark ? 'text-gray-300' : 'text-gray-700';
+  const inputCls = dark ? 'bg-gray-700/50 border-gray-600/50 text-white focus:ring-emerald-500' : 'bg-white border-gray-200 text-gray-800 focus:ring-blue-500';
+  const lblCls = dark ? 'text-gray-400' : 'text-gray-600';
   const cancelCls = dark ? 'bg-gray-600 hover:bg-gray-500 text-gray-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700';
   const saveCls = dark ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-600 hover:bg-blue-700';
   const vendorVal = deal ? deal.vendor : (S.mode === 'partner' && S.currentPartner ? S.currentPartner : '');
@@ -1160,37 +1577,37 @@ function openDealForm(editId) {
 
   let templateHtml = '';
   if (!deal && isJames) {
-    templateHtml = '<div class="mb-4"><label class="block text-xs font-medium mb-1 '+lblCls+'">Quick Template</label>'+
-      '<select id="templateSelect" onchange="applyTemplate(this.value)" class="w-full p-2 border rounded-xl '+inputCls+'">'+
+    templateHtml = '<div class="mb-4"><label class="block text-[10px] font-medium mb-1 '+lblCls+' uppercase tracking-wider">Quick Template</label>'+
+      '<select id="templateSelect" onchange="applyTemplate(this.value)" class="w-full p-2 text-sm border rounded-lg '+inputCls+'">'+
       '<option value="">— Choose a template —</option>'+
       TEMPLATES.map((t,i) => '<option value="'+i+'">'+esc(t.name)+'</option>').join('')+'</select></div>';
   }
 
-  el.innerHTML = '<div class="'+cardCls+' rounded-2xl p-5 sm:p-8 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">'+
-    '<div class="flex justify-between items-center mb-5"><h2 class="text-xl font-bold">'+(deal?'Edit Deal':'New Deal')+'</h2>'+
-    '<button onclick="closeModal(\'dealFormModal\')" class="text-2xl '+(dark?'text-gray-400 hover:text-white':'text-gray-400 hover:text-gray-700')+'">&times;</button></div>'+
-    '<div id="dealFormError" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded hidden text-sm"></div>'+
+  el.innerHTML = '<div class="'+cardCls+' rounded-xl p-5 sm:p-6 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">'+
+    '<div class="flex justify-between items-center mb-5"><h2 class="text-lg font-bold">'+(deal?'Edit Deal':'New Deal')+'</h2>'+
+    '<button onclick="closeModal(\'dealFormModal\')" class="text-xl '+(dark?'text-gray-400 hover:text-white':'text-gray-300 hover:text-gray-600')+'">&times;</button></div>'+
+    '<div id="dealFormError" class="bg-red-50 border-l-4 border-red-500 text-red-700 p-2.5 mb-4 rounded text-xs hidden"></div>'+
     templateHtml+
     '<form onsubmit="return submitDealForm(event, '+(editId||'null')+')">'+
-    '<div class="space-y-4">'+
-    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">'+
-    '<div><label class="block text-xs font-medium mb-1 '+lblCls+'">Vendor</label>'+
-    '<input type="text" id="dfVendor" value="'+escAttr(vendorVal)+'" placeholder="Vendor name" '+(S.mode==='partner'?'readonly':'')+' class="w-full p-2.5 border rounded-xl '+inputCls+(S.mode==='partner'?' opacity-60 cursor-not-allowed':'')+'"></div>'+
-    '<div><label class="block text-xs font-medium mb-1 '+lblCls+'">Region</label>'+
-    '<select id="dfRegion" class="w-full p-2.5 border rounded-xl '+inputCls+'">'+
+    '<div class="space-y-3">'+
+    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">'+
+    '<div><label class="block text-[10px] font-medium mb-1 '+lblCls+' uppercase tracking-wider">Vendor</label>'+
+    '<input type="text" id="dfVendor" value="'+escAttr(vendorVal)+'" placeholder="Vendor name" '+(S.mode==='partner'?'readonly':'')+' class="w-full p-2 text-sm border rounded-lg '+inputCls+(S.mode==='partner'?' opacity-50 cursor-not-allowed':'')+'"></div>'+
+    '<div><label class="block text-[10px] font-medium mb-1 '+lblCls+' uppercase tracking-wider">Region</label>'+
+    '<select id="dfRegion" class="w-full p-2 text-sm border rounded-lg '+inputCls+'">'+
     regions.map(r => '<option value="'+r+'"'+(deal&&deal.region===r?' selected':'')+'>'+r+'</option>').join('')+'</select></div></div>'+
-    '<div><label class="block text-xs font-medium mb-1 '+lblCls+'">Description</label>'+
-    '<textarea id="dfDesc" rows="3" placeholder="Describe the deal..." class="w-full p-2.5 border rounded-xl '+inputCls+'">'+(deal?esc(deal.description):'')+'</textarea></div>'+
-    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">'+
-    '<div><label class="block text-xs font-medium mb-1 '+lblCls+'">Cost ($)</label>'+
-    '<input type="number" id="dfCost" value="'+(deal?deal.cost:'')+'" placeholder="e.g. 50000" class="w-full p-2.5 border rounded-xl '+inputCls+'"></div>'+
-    '<div><label class="block text-xs font-medium mb-1 '+lblCls+'">Execution Window</label>'+
-    '<input type="text" id="dfWindow" value="'+(deal?escAttr(deal.executionWindow):'')+'" placeholder="e.g. Q3 2026" class="w-full p-2.5 border rounded-xl '+inputCls+'"></div></div>'+
-    '<div><label class="block text-xs font-medium mb-1 '+lblCls+'">Terms (optional)</label>'+
-    '<textarea id="dfTerms" rows="2" placeholder="Any special conditions..." class="w-full p-2.5 border rounded-xl '+inputCls+'">'+(deal?esc(deal.terms):'')+'</textarea></div>'+
-    '<div class="flex justify-end gap-3 pt-3">'+
-    '<button type="button" onclick="closeModal(\'dealFormModal\')" class="py-2.5 px-5 rounded-xl font-medium '+cancelCls+' transition-colors">Cancel</button>'+
-    '<button type="submit" class="py-2.5 px-6 rounded-xl font-medium text-white '+saveCls+' transition-colors">Save Deal</button>'+
+    '<div><label class="block text-[10px] font-medium mb-1 '+lblCls+' uppercase tracking-wider">Description</label>'+
+    '<textarea id="dfDesc" rows="3" placeholder="Describe the deal..." class="w-full p-2 text-sm border rounded-lg '+inputCls+'">'+(deal?esc(deal.description):'')+'</textarea></div>'+
+    '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">'+
+    '<div><label class="block text-[10px] font-medium mb-1 '+lblCls+' uppercase tracking-wider">Cost ($)</label>'+
+    '<input type="number" id="dfCost" value="'+(deal?deal.cost:'')+'" placeholder="e.g. 50000" class="w-full p-2 text-sm border rounded-lg '+inputCls+'"></div>'+
+    '<div><label class="block text-[10px] font-medium mb-1 '+lblCls+' uppercase tracking-wider">Execution Window</label>'+
+    '<input type="text" id="dfWindow" value="'+(deal?escAttr(deal.executionWindow):'')+'" placeholder="e.g. Q3 2026" class="w-full p-2 text-sm border rounded-lg '+inputCls+'"></div></div>'+
+    '<div><label class="block text-[10px] font-medium mb-1 '+lblCls+' uppercase tracking-wider">Terms (optional)</label>'+
+    '<textarea id="dfTerms" rows="2" placeholder="Any special conditions..." class="w-full p-2 text-sm border rounded-lg '+inputCls+'">'+(deal?esc(deal.terms):'')+'</textarea></div>'+
+    '<div class="flex justify-end gap-2 pt-3">'+
+    '<button type="button" onclick="closeModal(\'dealFormModal\')" class="py-2 px-4 rounded-lg font-medium text-sm '+cancelCls+' transition-colors">Cancel</button>'+
+    '<button type="submit" class="py-2 px-5 rounded-lg font-medium text-sm text-white '+saveCls+' transition-colors">Save Deal</button>'+
     '</div></div></form></div>';
   document.body.appendChild(el);
 }
@@ -1233,7 +1650,6 @@ function submitDealForm(e, editId) {
 function closeModal(id) {
   const el = document.getElementById(id);
   if (el) el.remove();
-  // Close finder dropdown on any modal close
   S.finderOpen = false;
 }
 
@@ -1244,7 +1660,7 @@ function handleLogout() {
   S.currentPartner = null; S.isAuthenticated = false; S.mode = null;
   S.searchQuery = ''; S.sortOption = 'createdAt-desc';
   S.vendorFilter = 'all'; S.statusFilter = 'all'; S.regionFilter = 'all';
-  S.viewMode = 'tiles'; S.selectedDeals.clear();
+  S.viewMode = 'tiles'; S.selectedDeals.clear(); S.jamesTab = 'deals';
   S.finderQuery = ''; S.finderResults = null; S.finderOpen = false;
   expandedRows.clear();
   render();
@@ -1255,13 +1671,14 @@ function switchToJamesMode() {
   S.currentPartner = null;
   S.searchQuery = ''; S.sortOption = 'createdAt-desc';
   S.vendorFilter = 'all'; S.statusFilter = 'all'; S.regionFilter = 'all';
+  S.jamesTab = 'deals';
   render();
 }
 
 function switchToPartnerMode() {
   S.mode = null; S.isAuthenticated = false;
   S.searchQuery = ''; S.sortOption = 'createdAt-desc';
-  S.finderQuery = ''; S.finderResults = null;
+  S.finderQuery = ''; S.finderResults = null; S.jamesTab = 'deals';
   S.selectedDeals.clear(); expandedRows.clear();
   showPartnerSelection();
 }
@@ -1280,45 +1697,44 @@ function render() {
 
   // Landing page
   if (!S.currentPartner && !S.isAuthenticated) {
-    document.body.className = 'bg-gradient-to-br from-slate-100 to-blue-50 min-h-screen font-sans';
+    document.body.className = 'bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen font-sans';
     app.innerHTML = '<div class="min-h-screen flex flex-col items-center justify-center p-4">'+
-      '<div class="bg-white/80 backdrop-blur-md p-6 sm:p-10 rounded-2xl shadow-xl text-center max-w-md w-full fade-in border border-white/50">'+
-      '<div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-5"><span class="text-white text-2xl font-bold">M</span></div>'+
-      '<h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-1">MFG Media Deal Hub</h1>'+
-      '<p class="text-sm text-gray-500 mb-8">Media partnership deal management platform</p>'+
-      '<div class="flex flex-col gap-3">'+
-      '<button onclick="showPartnerSelection()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 px-6 rounded-xl shadow-sm transition-all active:scale-95 text-sm">Continue as Partner</button>'+
-      '<button onclick="enterJamesMode()" class="bg-gray-800 hover:bg-gray-900 text-white font-semibold py-3.5 px-6 rounded-xl shadow-sm transition-all active:scale-95 text-sm">ENTER JAMES MODE</button>'+
+      '<div class="bg-white/90 backdrop-blur-md p-6 sm:p-10 rounded-2xl shadow-lg text-center max-w-sm w-full fade-in border border-gray-100">'+
+      '<div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-5"><span class="text-white text-xl font-bold">M</span></div>'+
+      '<h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-0.5">MFG Media Deal Hub</h1>'+
+      '<p class="text-xs text-gray-400 mb-8">Media partnership deal management</p>'+
+      '<div class="flex flex-col gap-2.5">'+
+      '<button onclick="showPartnerSelection()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-sm transition-all active:scale-95 text-sm">Continue as Partner</button>'+
+      '<button onclick="enterJamesMode()" class="bg-gray-800 hover:bg-gray-900 text-white font-semibold py-3 px-6 rounded-lg shadow-sm transition-all active:scale-95 text-sm">ENTER JAMES MODE</button>'+
       '</div></div>'+
-      '<p class="text-xs text-gray-400 mt-6">Media Futures Group</p></div>';
+      '<p class="text-[10px] text-gray-300 mt-6">Media Futures Group</p></div>';
     return;
   }
 
   const isJames = S.mode === 'james' && S.isAuthenticated;
   const dark = isJames && S.jamesTheme === 'dark';
 
-  document.body.className = (dark ? 'bg-j-bg' : (isJames ? 'bg-jl-bg' : 'bg-slate-50')) + ' min-h-screen font-sans transition-colors duration-300';
+  document.body.className = (dark ? 'bg-j-bg' : (isJames ? 'bg-jl-bg' : 'bg-slate-50')) + ' min-h-screen font-sans transition-colors duration-200';
 
-  const headerBg = dark ? 'bg-j-card/90 backdrop-blur-md border-b border-gray-700/50' : 'bg-white/90 backdrop-blur-md border-b border-gray-200/50';
+  const headerBg = dark ? 'bg-j-card/95 backdrop-blur-md border-b border-gray-700/30' : 'bg-white/95 backdrop-blur-md border-b border-gray-100';
   const headerText = dark ? 'text-j-text' : 'text-gray-800';
-  const headerBtn = dark ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700';
+  const headerBtn = dark ? 'bg-gray-700/50 hover:bg-gray-600 text-gray-300' : 'bg-gray-50 hover:bg-gray-100 text-gray-600';
 
   const header = '<header class="'+headerBg+' sticky top-0 z-10 no-print">'+
-    '<div class="max-w-7xl mx-auto flex items-center justify-between px-3 sm:px-6 py-3">'+
-    '<div class="flex items-center gap-2 sm:gap-3">'+
-    '<div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0"><span class="text-white text-sm font-bold">M</span></div>'+
-    '<span class="font-semibold '+headerText+' text-sm sm:text-base hidden sm:inline">MFG Media Deal Hub</span></div>'+
+    '<div class="max-w-7xl mx-auto flex items-center justify-between px-3 sm:px-6 py-2.5">'+
     '<div class="flex items-center gap-2">'+
+    '<div class="w-7 h-7 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0"><span class="text-white text-xs font-bold">M</span></div>'+
+    '<span class="font-semibold '+headerText+' text-sm hidden sm:inline">MFG Deal Hub</span></div>'+
+    '<div class="flex items-center gap-1.5">'+
     (isJames
-      ? '<button onclick="switchToPartnerMode()" class="text-xs font-medium px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors">Partner Mode</button>'+
-        '<button onclick="toggleTheme()" class="p-2 rounded-lg '+headerBtn+' transition-colors text-sm" title="Toggle theme">'+(dark?'☀️':'🌙')+'</button>'
-      : '<button onclick="switchToJamesMode()" class="text-xs font-medium px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-900 text-white transition-colors">James Mode</button>')+
-    '<button onclick="handleLogout()" class="'+headerBtn+' font-medium py-2 px-3 rounded-lg text-xs transition-colors">Home</button>'+
+      ? '<button onclick="switchToPartnerMode()" class="text-[10px] font-medium px-2.5 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors">Partner Mode</button>'+
+        '<button onclick="toggleTheme()" class="p-1.5 rounded-md '+headerBtn+' transition-colors text-xs" title="Toggle theme">'+(dark?'☀️':'🌙')+'</button>'
+      : '<button onclick="switchToJamesMode()" class="text-[10px] font-medium px-2.5 py-1.5 rounded-md bg-gray-800 hover:bg-gray-900 text-white transition-colors">James Mode</button>')+
+    '<button onclick="handleLogout()" class="'+headerBtn+' font-medium py-1.5 px-2.5 rounded-md text-[10px] transition-colors">Home</button>'+
     '</div></div></header>';
 
   app.innerHTML = header + '<main>' + (isJames ? renderJamesMode() : renderPartnerMode()) + '</main>' + renderBulkBar();
 
-  // Restore focus on finder input if it was active
   if (S.finderOpen) {
     const fi = document.getElementById('finderInput');
     if (fi) { fi.focus(); fi.selectionStart = fi.selectionEnd = fi.value.length; }
