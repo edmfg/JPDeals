@@ -169,7 +169,7 @@ let S = {
   viewMode: 'tiles', vendorFilter: 'all', statusFilter: 'all', regionFilter: 'all',
   vendorEmails: [], selectedDeals: new Set(), jamesTheme: 'dark',
   savedFilters: [], activityLog: [],
-  finderQuery: '', finderResults: null, finderOpen: false,
+  finderQuery: '', finderResults: null, finderOpen: false, finderCollapsed: false,
 };
 let expandedRows = new Set();
 
@@ -653,11 +653,16 @@ function renderGeminiFinder() {
   const suggestions = S.finderOpen ? getFinderSuggestions(S.finderQuery) : [];
 
   let html = '<div class="'+cardBg+' rounded-xl p-4 sm:p-5 mb-6 fade-in">'+
-    '<div class="flex items-center gap-2 mb-3">'+
+    '<div class="flex items-center justify-between cursor-pointer" onclick="S.finderCollapsed=!S.finderCollapsed;render()">'+
+    '<div class="flex items-center gap-2">'+
     '<span class="text-lg">✦</span>'+
     '<h3 class="font-semibold '+(dark?'text-red-100':'text-red-800')+'">ASK GEMINI</h3>'+
     '<span class="text-xs '+(dark?'text-red-300/70 bg-red-900/50':'text-red-600 bg-red-100')+' px-2 py-0.5 rounded-full">AI-Powered Deal Analysis</span></div>'+
-    '<div class="relative">'+
+    '<svg class="w-5 h-5 '+(dark?'text-red-300':'text-red-600')+' transform transition-transform '+(S.finderCollapsed?'':'rotate-180')+'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg></div>';
+
+  if (S.finderCollapsed) { html += '</div>'; return html; }
+
+  html += '<div class="mt-3"><div class="relative">'+
     '<input type="text" id="finderInput" value="'+escAttr(S.finderQuery)+'" '+
     'oninput="S.finderQuery=this.value;S.finderOpen=true;render()" '+
     'onkeydown="if(event.key===\'Enter\'){event.preventDefault();runFinder(this.value)}" '+
@@ -703,7 +708,7 @@ function renderGeminiFinder() {
     html += '<button onclick="S.finderResults=null;S.finderQuery=\'\';render()" class="mt-3 text-xs '+(dark?'text-gray-400 hover:text-gray-300':'text-gray-500 hover:text-gray-700')+' underline">Clear results</button></div>';
   }
 
-  html += '</div>';
+  html += '</div></div>';
   return html;
 }
 
@@ -1244,6 +1249,22 @@ function handleLogout() {
   render();
 }
 
+function switchToJamesMode() {
+  S.mode = 'james'; S.isAuthenticated = true;
+  S.currentPartner = null;
+  S.searchQuery = ''; S.sortOption = 'createdAt-desc';
+  S.vendorFilter = 'all'; S.statusFilter = 'all'; S.regionFilter = 'all';
+  render();
+}
+
+function switchToPartnerMode() {
+  S.mode = null; S.isAuthenticated = false;
+  S.searchQuery = ''; S.sortOption = 'createdAt-desc';
+  S.finderQuery = ''; S.finderResults = null;
+  S.selectedDeals.clear(); expandedRows.clear();
+  showPartnerSelection();
+}
+
 function toggleTheme() {
   S.jamesTheme = S.jamesTheme === 'dark' ? 'light' : 'dark';
   save(STORE.theme, S.jamesTheme);
@@ -1287,9 +1308,11 @@ function render() {
     '<div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0"><span class="text-white text-sm font-bold">M</span></div>'+
     '<span class="font-semibold '+headerText+' text-sm sm:text-base hidden sm:inline">MFG Media Deal Hub</span></div>'+
     '<div class="flex items-center gap-2">'+
-    (isJames ? '<span class="text-xs font-medium text-emerald-500 hidden sm:inline">James\' Console</span>'+
-      '<button onclick="toggleTheme()" class="p-2 rounded-lg '+headerBtn+' transition-colors text-sm" title="Toggle theme">'+(dark?'☀️':'🌙')+'</button>' : '')+
-    '<button onclick="handleLogout()" class="'+headerBtn+' font-medium py-2 px-3 rounded-lg text-xs transition-colors">'+(S.currentPartner?'Switch':'Log Out')+'</button>'+
+    (isJames
+      ? '<button onclick="switchToPartnerMode()" class="text-xs font-medium px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors">Partner Mode</button>'+
+        '<button onclick="toggleTheme()" class="p-2 rounded-lg '+headerBtn+' transition-colors text-sm" title="Toggle theme">'+(dark?'☀️':'🌙')+'</button>'
+      : '<button onclick="switchToJamesMode()" class="text-xs font-medium px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-900 text-white transition-colors">James Mode</button>')+
+    '<button onclick="handleLogout()" class="'+headerBtn+' font-medium py-2 px-3 rounded-lg text-xs transition-colors">Home</button>'+
     '</div></div></header>';
 
   app.innerHTML = header + '<main>' + (isJames ? renderJamesMode() : renderPartnerMode()) + '</main>' + renderBulkBar();
